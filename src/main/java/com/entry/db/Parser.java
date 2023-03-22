@@ -2,9 +2,6 @@ package com.entry.db;
 
 import Zql.*;
 import com.entry.db.execution.*;
-import jline.ArgumentCompletor;
-import jline.ConsoleReader;
-import jline.SimpleCompletor;
 import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Type;
@@ -16,6 +13,13 @@ import com.entry.db.storage.Tuple;
 import com.entry.db.storage.TupleDesc;
 import com.entry.db.transaction.Transaction;
 import com.entry.db.transaction.TransactionId;
+import org.apache.calcite.sql.SqlNode;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.impl.completer.ArgumentCompleter;
+import org.jline.reader.impl.completer.StringsCompleter;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
@@ -137,7 +141,7 @@ public class Parser {
 
     }
 
-    public LogicalPlan parseQueryLogicalPlan(TransactionId tid, ZQuery q)
+    public LogicalPlan parseQueryLogicalPlan(TransactionId tid, SqlNode q)
             throws IOException, Zql.ParseException, ParsingException {
         @SuppressWarnings("unchecked")
         List<ZFromItem> from = q.getFrom();
@@ -657,13 +661,13 @@ public class Parser {
                 e.printStackTrace();
             }
         } else { // no query file, run interactive prompt
-            ConsoleReader reader = new ConsoleReader();
 
             // Add really stupid tab completion for simple SQL
-            ArgumentCompletor completor = new ArgumentCompletor(
-                    new SimpleCompletor(SQL_COMMANDS));
+            ArgumentCompleter completor = new ArgumentCompleter(
+                    new StringsCompleter(SQL_COMMANDS));
             completor.setStrict(false); // match at any position
-            reader.addCompletor(completor);
+            Terminal terminal = TerminalBuilder.builder().system(true).build();
+            LineReader reader = LineReaderBuilder.builder().terminal(terminal).completer(completor).build();
 
             StringBuilder buffer = new StringBuilder();
             String line;
@@ -733,7 +737,7 @@ class TupleArrayIterator implements OpIterator {
      * from a child operator or an access method).
      *
      * @return The next tuple in the iterator, or null if there are no more
-     *         tuples.
+     * tuples.
      */
     public Tuple next() throws
             NoSuchElementException {
