@@ -3,6 +3,7 @@
 /dist/
 /log
 /out
+/target
 .DS_Store
 simple1.db
 simple2.db

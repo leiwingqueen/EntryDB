@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="simpledb" default="dist" basedir=".">
     <property name="src" location="src"/>
-    <property name="testd" location="test"/>
+    <property name="testd" location="src/test"/>
 
     <property name="build" location="bin"/>
     <property name="build.src" location="${build}/src"/>
@@ -187,7 +187,7 @@
     <target name="javadocs" description="Build javadoc documentation">
         <javadoc destdir="${doc}" access="private" failonerror="true" source="${sourceversion}" additionalparam="-Xdoclint:none">
             <classpath refid="classpath.base" />
-            <fileset dir="src/java" defaultexcludes="yes">
+            <fileset dir="src/main/java" defaultexcludes="yes">
                 <include name="simpledb/**/*.java"/>
             </fileset>
         </javadoc>
