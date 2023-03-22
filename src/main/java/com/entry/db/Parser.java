@@ -8,7 +8,6 @@ import jline.SimpleCompletor;
 import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Type;
-import simpledb.execution.*;
 import com.entry.db.optimizer.LogicalPlan;
 import com.entry.db.optimizer.TableStats;
 import com.entry.db.storage.IntField;

@@ -11,7 +11,6 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 import junit.framework.JUnit4TestAdapter;
-import simpledb.storage.*;
 
 import java.util.Arrays;
 

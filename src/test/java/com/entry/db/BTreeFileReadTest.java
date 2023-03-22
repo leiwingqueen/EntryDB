@@ -9,8 +9,6 @@ import com.entry.db.storage.*;
 import com.entry.db.systemtest.SimpleDbTestBase;
 import com.entry.db.transaction.TransactionId;
 import org.junit.Assert;
-import simpledb.index.*;
-import simpledb.storage.*;
 
 import java.util.*;
 

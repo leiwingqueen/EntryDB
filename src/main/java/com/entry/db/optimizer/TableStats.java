@@ -6,7 +6,6 @@ import com.entry.db.common.Type;
 import com.entry.db.execution.Predicate;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
-import simpledb.storage.*;
 
 import java.util.Iterator;
 import java.util.Map;

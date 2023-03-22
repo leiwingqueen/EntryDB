@@ -14,7 +14,6 @@ import com.entry.db.common.DbException;
 import com.entry.db.common.Utility;
 import com.entry.db.execution.Insert;
 import com.entry.db.execution.SeqScan;
-import simpledb.storage.*;
 import com.entry.db.transaction.Transaction;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;

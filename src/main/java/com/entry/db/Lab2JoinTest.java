@@ -3,7 +3,6 @@ package com.entry.db;
 import com.entry.db.common.Database;
 import com.entry.db.common.Type;
 import com.entry.db.execution.*;
-import simpledb.execution.*;
 import com.entry.db.storage.HeapFile;
 import com.entry.db.storage.IntField;
 import com.entry.db.storage.Tuple;

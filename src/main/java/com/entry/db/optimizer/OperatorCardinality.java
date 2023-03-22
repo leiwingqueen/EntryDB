@@ -2,7 +2,6 @@ package com.entry.db.optimizer;
 
 import com.entry.db.common.Database;
 import com.entry.db.execution.*;
-import simpledb.execution.*;
 
 import java.util.Map;
 

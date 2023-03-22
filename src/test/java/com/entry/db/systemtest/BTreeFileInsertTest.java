@@ -4,7 +4,6 @@ import com.entry.db.common.Database;
 import com.entry.db.common.Permissions;
 import com.entry.db.execution.IndexPredicate;
 import com.entry.db.index.*;
-import simpledb.index.*;
 import com.entry.db.storage.BufferPool;
 import com.entry.db.storage.DbFileIterator;
 import com.entry.db.execution.Predicate.Op;

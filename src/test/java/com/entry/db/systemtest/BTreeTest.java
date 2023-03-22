@@ -5,7 +5,6 @@ import com.entry.db.execution.IndexPredicate;
 import com.entry.db.index.BTreeFile;
 import com.entry.db.index.BTreeUtility;
 import com.entry.db.storage.*;
-import simpledb.storage.*;
 
 import static org.junit.Assert.*;
 

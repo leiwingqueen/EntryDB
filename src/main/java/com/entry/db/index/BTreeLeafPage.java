@@ -2,9 +2,7 @@ package com.entry.db.index;
 
 import com.entry.db.common.*;
 import com.entry.db.storage.*;
-import simpledb.common.*;
 import com.entry.db.execution.Predicate;
-import simpledb.storage.*;
 
 import java.io.*;
 import java.util.Iterator;

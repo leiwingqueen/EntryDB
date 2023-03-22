@@ -10,7 +10,6 @@ import com.entry.db.storage.Field;
 import com.entry.db.storage.IntField;
 import com.entry.db.systemtest.SimpleDbTestBase;
 import com.entry.db.transaction.TransactionId;
-import simpledb.index.*;
 
 import java.util.*;
 

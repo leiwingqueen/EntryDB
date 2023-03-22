@@ -7,7 +7,6 @@ import com.entry.db.common.Utility;
 import com.entry.db.execution.IndexPredicate;
 import com.entry.db.execution.Predicate.Op;
 import com.entry.db.storage.*;
-import simpledb.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
 

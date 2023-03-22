@@ -1,7 +1,6 @@
 package com.entry.db.index;
 
 import com.entry.db.common.*;
-import simpledb.common.*;
 import com.entry.db.execution.Predicate.Op;
 import com.entry.db.storage.BufferPool;
 import com.entry.db.storage.Field;

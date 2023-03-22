@@ -12,10 +12,8 @@ import com.entry.db.common.*;
 import com.entry.db.storage.*;
 import org.junit.Assert;
 
-import simpledb.common.*;
 import com.entry.db.execution.OpIterator;
 import com.entry.db.execution.SeqScan;
-import simpledb.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
 

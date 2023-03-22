@@ -8,7 +8,6 @@ import com.entry.db.storage.DbFile;
 import com.entry.db.storage.DbFileIterator;
 import com.entry.db.storage.Tuple;
 import com.entry.db.storage.TupleDesc;
-import simpledb.common.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
 

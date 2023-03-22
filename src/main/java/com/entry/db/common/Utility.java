@@ -1,7 +1,6 @@
 package com.entry.db.common;
 
 import com.entry.db.storage.*;
-import simpledb.storage.*;
 
 import java.io.File;
 import java.io.FileOutputStream;

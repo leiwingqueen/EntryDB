@@ -5,8 +5,6 @@ import com.entry.db.execution.OpIterator;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
-import simpledb.common.*;
-import simpledb.storage.*;
 
 import java.io.*;
 import java.util.*;

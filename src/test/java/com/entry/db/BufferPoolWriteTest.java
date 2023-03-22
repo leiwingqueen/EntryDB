@@ -18,7 +18,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import simpledb.storage.*;
 
 import static org.junit.Assert.*;
 import junit.framework.JUnit4TestAdapter;

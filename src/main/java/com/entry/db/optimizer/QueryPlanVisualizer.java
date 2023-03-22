@@ -2,7 +2,6 @@ package com.entry.db.optimizer;
 
 import com.entry.db.execution.*;
 import com.entry.db.storage.TupleDesc;
-import simpledb.execution.*;
 
 import java.io.PrintStream;
 import java.util.Arrays;

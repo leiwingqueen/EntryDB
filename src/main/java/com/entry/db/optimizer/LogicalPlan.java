@@ -7,8 +7,6 @@ import com.entry.db.common.Type;
 import com.entry.db.execution.*;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionId;
-import simpledb.execution.*;
-import simpledb.storage.*;
 
 import java.io.File;
 import java.util.*;

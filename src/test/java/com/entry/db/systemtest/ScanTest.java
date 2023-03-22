@@ -5,7 +5,6 @@ import com.entry.db.common.DbException;
 import com.entry.db.common.Utility;
 import com.entry.db.execution.SeqScan;
 import com.entry.db.storage.*;
-import simpledb.storage.*;
 
 import static org.junit.Assert.*;
 

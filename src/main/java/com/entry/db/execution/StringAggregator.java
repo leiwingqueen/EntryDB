@@ -3,7 +3,6 @@ package com.entry.db.execution;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Type;
 import com.entry.db.storage.*;
-import simpledb.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 
 import java.util.Iterator;

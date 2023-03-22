@@ -6,7 +6,6 @@ import com.entry.db.storage.*;
 import com.entry.db.systemtest.SimpleDbTestBase;
 import com.entry.db.systemtest.SystemTestUtil;
 import com.entry.db.transaction.TransactionId;
-import simpledb.storage.*;
 
 import java.util.*;
 import org.junit.After;

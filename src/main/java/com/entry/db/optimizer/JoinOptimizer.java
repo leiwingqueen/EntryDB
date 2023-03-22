@@ -3,7 +3,6 @@ package com.entry.db.optimizer;
 import com.entry.db.ParsingException;
 import com.entry.db.common.Database;
 import com.entry.db.execution.*;
-import simpledb.execution.*;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;

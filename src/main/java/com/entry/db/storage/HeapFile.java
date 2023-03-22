@@ -4,7 +4,6 @@ import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Debug;
 import com.entry.db.common.Permissions;
-import simpledb.common.*;
 import com.entry.db.transaction.LockManager;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
