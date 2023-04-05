@@ -1,10 +1,12 @@
 package com.entry.db;
 
 import Zql.*;
-import com.entry.db.execution.*;
+
+// replace this with your own package name
 import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Type;
+import com.entry.db.execution.*;
 import com.entry.db.optimizer.LogicalPlan;
 import com.entry.db.optimizer.TableStats;
 import com.entry.db.storage.IntField;
@@ -13,7 +15,6 @@ import com.entry.db.storage.Tuple;
 import com.entry.db.storage.TupleDesc;
 import com.entry.db.transaction.Transaction;
 import com.entry.db.transaction.TransactionId;
-import org.apache.calcite.sql.SqlNode;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.impl.completer.ArgumentCompleter;
@@ -29,7 +30,7 @@ import java.util.*;
 public class Parser {
     static boolean explain = false;
 
-    public static Predicate.Op getOp(String s) throws ParsingException {
+    public static Predicate.Op getOp(String s) throws com.entry.db.ParsingException {
         if (s.equals("="))
             return Predicate.Op.EQUALS;
         if (s.equals(">"))
@@ -53,7 +54,7 @@ public class Parser {
     }
 
     void processExpression(TransactionId tid, ZExpression wx, LogicalPlan lp)
-            throws ParsingException, IOException, ParseException {
+            throws ParsingException, IOException {
         if (wx.getOperator().equals("AND")) {
             for (int i = 0; i < wx.nbOperands(); i++) {
                 if (!(wx.getOperand(i) instanceof ZExpression)) {
@@ -141,8 +142,8 @@ public class Parser {
 
     }
 
-    public LogicalPlan parseQueryLogicalPlan(TransactionId tid, SqlNode q)
-            throws IOException, Zql.ParseException, ParsingException {
+    public LogicalPlan parseQueryLogicalPlan(TransactionId tid, ZQuery q)
+            throws IOException, ParsingException {
         @SuppressWarnings("unchecked")
         List<ZFromItem> from = q.getFrom();
         LogicalPlan lp = new LogicalPlan();
@@ -296,7 +297,7 @@ public class Parser {
         if (physicalPlan != null) {
             Class<?> c;
             try {
-                c = Class.forName("com.entry.db.optimizer.OperatorCardinality");
+                c = Class.forName("optimizer.OperatorCardinality");
 
                 Class<?> p = Operator.class;
                 Class<?> h = Map.class;
@@ -307,7 +308,7 @@ public class Parser {
                 System.out.println("The query plan is:");
                 m.invoke(null, physicalPlan,
                         lp.getTableAliasToIdMapping(), TableStats.getStatsMap());
-                c = Class.forName("com.entry.db.optimizer.QueryPlanVisualizer");
+                c = Class.forName("optimizer.QueryPlanVisualizer");
                 m = c.getMethod(
                         "printQueryPlanTree", OpIterator.class, System.out.getClass());
                 m.invoke(c.newInstance(), physicalPlan, System.out);
@@ -396,7 +397,7 @@ public class Parser {
 
     public Query handleDeleteStatement(ZDelete s, TransactionId tid)
             throws
-            ParsingException, IOException, ParseException {
+            ParsingException, IOException {
         int id;
         try {
             id = Database.getCatalog().getTableId(s.getTable()); // will fall
@@ -661,13 +662,15 @@ public class Parser {
                 e.printStackTrace();
             }
         } else { // no query file, run interactive prompt
+            Terminal terminal = TerminalBuilder.builder().build();
+            ArgumentCompleter completor = new ArgumentCompleter(new StringsCompleter(SQL_COMMANDS));
+            completor.setStrict(false); // match at any position
+            LineReader reader = LineReaderBuilder.builder().terminal(terminal).completer(completor).build();
+            // ConsoleReader reader = new ConsoleReader();
 
             // Add really stupid tab completion for simple SQL
-            ArgumentCompleter completor = new ArgumentCompleter(
-                    new StringsCompleter(SQL_COMMANDS));
-            completor.setStrict(false); // match at any position
-            Terminal terminal = TerminalBuilder.builder().system(true).build();
-            LineReader reader = LineReaderBuilder.builder().terminal(terminal).completer(completor).build();
+            // ArgumentCompletor completor = new ArgumentCompletor(new SimpleCompletor(SQL_COMMANDS));
+            // reader.addCompletor(completor);
 
             StringBuilder buffer = new StringBuilder();
             String line;
