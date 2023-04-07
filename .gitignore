@@ -5,6 +5,7 @@
 /out
 /target
 /lib
+/work
 .DS_Store
 simple1.db
 simple2.db
