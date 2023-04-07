@@ -1,287 +1,266 @@
-/*     */ package Zql;
-/*     */ 
-/*     */ import java.io.BufferedReader;
-/*     */ import java.io.ByteArrayInputStream;
-/*     */ import java.io.FileReader;
-/*     */ import java.sql.SQLException;
-/*     */ import java.util.Vector;
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ public class ZEval
-/*     */ {
-/*     */   public boolean eval(ZTuple paramZTuple, ZExp paramZExp) throws SQLException {
-/*  23 */     if (paramZTuple == null || paramZExp == null) {
-/*  24 */       throw new SQLException("ZEval.eval(): null argument or operator");
-/*     */     }
-/*  26 */     if (!(paramZExp instanceof ZExpression)) {
-/*  27 */       throw new SQLException("ZEval.eval(): only expressions are supported");
-/*     */     }
-/*  29 */     ZExpression zExpression = (ZExpression)paramZExp;
-/*  30 */     String str = zExpression.getOperator();
-/*     */     
-/*  32 */     if (str.equals("AND")) {
-/*  33 */       boolean bool = true;
-/*  34 */       for (byte b = 0; b < zExpression.nbOperands(); b++) {
-/*  35 */         bool &= eval(paramZTuple, zExpression.getOperand(b));
-/*     */       }
-/*  37 */       return bool;
-/*  38 */     }  if (str.equals("OR")) {
-/*  39 */       boolean bool = false;
-/*  40 */       for (byte b = 0; b < zExpression.nbOperands(); b++) {
-/*  41 */         bool |= eval(paramZTuple, zExpression.getOperand(b));
-/*     */       }
-/*  43 */       return bool;
-/*  44 */     }  if (str.equals("NOT")) {
-/*  45 */       return !eval(paramZTuple, zExpression.getOperand(0));
-/*     */     }
-/*  47 */     if (str.equals("="))
-/*  48 */       return (evalCmp(paramZTuple, zExpression.getOperands()) == 0.0D); 
-/*  49 */     if (str.equals("!="))
-/*  50 */       return (evalCmp(paramZTuple, zExpression.getOperands()) != 0.0D); 
-/*  51 */     if (str.equals("<>"))
-/*  52 */       return (evalCmp(paramZTuple, zExpression.getOperands()) != 0.0D); 
-/*  53 */     if (str.equals("#"))
-/*  54 */       throw new SQLException("ZEval.eval(): Operator # not supported"); 
-/*  55 */     if (str.equals(">"))
-/*  56 */       return (evalCmp(paramZTuple, zExpression.getOperands()) > 0.0D); 
-/*  57 */     if (str.equals(">="))
-/*  58 */       return (evalCmp(paramZTuple, zExpression.getOperands()) >= 0.0D); 
-/*  59 */     if (str.equals("<"))
-/*  60 */       return (evalCmp(paramZTuple, zExpression.getOperands()) < 0.0D); 
-/*  61 */     if (str.equals("<=")) {
-/*  62 */       return (evalCmp(paramZTuple, zExpression.getOperands()) <= 0.0D);
-/*     */     }
-/*  64 */     if (str.equals("BETWEEN") || str.equals("NOT BETWEEN")) {
-/*     */ 
-/*     */       
-/*  67 */       ZExpression zExpression1 = new ZExpression("AND", new ZExpression(">=", zExpression.getOperand(0), zExpression.getOperand(1)), new ZExpression("<=", zExpression.getOperand(0), zExpression.getOperand(2)));
-/*     */ 
-/*     */ 
-/*     */       
-/*  71 */       if (str.equals("NOT BETWEEN")) {
-/*  72 */         return !eval(paramZTuple, zExpression1);
-/*     */       }
-/*  74 */       return eval(paramZTuple, zExpression1);
-/*     */     } 
-/*  76 */     if (str.equals("LIKE") || str.equals("NOT LIKE")) {
-/*  77 */       throw new SQLException("ZEval.eval(): Operator (NOT) LIKE not supported");
-/*     */     }
-/*  79 */     if (str.equals("IN") || str.equals("NOT IN")) {
-/*     */       
-/*  81 */       ZExpression zExpression1 = new ZExpression("OR");
-/*     */       
-/*  83 */       for (byte b = 1; b < zExpression.nbOperands(); b++) {
-/*  84 */         zExpression1.addOperand(new ZExpression("=", zExpression.getOperand(0), zExpression.getOperand(b)));
-/*     */       }
-/*     */ 
-/*     */       
-/*  88 */       if (str.equals("NOT IN")) {
-/*  89 */         return !eval(paramZTuple, zExpression1);
-/*     */       }
-/*  91 */       return eval(paramZTuple, zExpression1);
-/*     */     } 
-/*  93 */     if (str.equals("IS NULL")) {
-/*     */       
-/*  95 */       if (zExpression.nbOperands() <= 0 || zExpression.getOperand(0) == null) return true; 
-/*  96 */       ZExp zExp = zExpression.getOperand(0);
-/*  97 */       if (zExp instanceof ZConstant) {
-/*  98 */         return (((ZConstant)zExp).getType() == 1);
-/*     */       }
-/* 100 */       throw new SQLException("ZEval.eval(): can't eval IS (NOT) NULL");
-/*     */     } 
-/*     */     
-/* 103 */     if (str.equals("IS NOT NULL")) {
-/*     */       
-/* 105 */       ZExpression zExpression1 = new ZExpression("IS NULL");
-/* 106 */       zExpression1.setOperands(zExpression.getOperands());
-/* 107 */       return !eval(paramZTuple, zExpression1);
-/*     */     } 
-/*     */     
-/* 110 */     throw new SQLException("ZEval.eval(): Unknown operator " + str);
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   double evalCmp(ZTuple paramZTuple, Vector paramVector) throws SQLException {
-/* 117 */     if (paramVector.size() < 2) {
-/* 118 */       throw new SQLException("ZEval.evalCmp(): Trying to compare less than two values");
-/*     */     }
-/*     */     
-/* 121 */     if (paramVector.size() > 2) {
-/* 122 */       throw new SQLException("ZEval.evalCmp(): Trying to compare more than two values");
-/*     */     }
-/*     */ 
-/*     */     
-/* 126 */     Object object1 = null, object2 = null;
-/*     */     
-/* 128 */     object1 = evalExpValue(paramZTuple, paramVector.elementAt(0));
-/* 129 */     object2 = evalExpValue(paramZTuple, paramVector.elementAt(1));
-/*     */     
-/* 131 */     if (object1 instanceof String || object2 instanceof String) {
-/* 132 */       return (object1.equals(object2) ? false : -1);
-/*     */     }
-/*     */     
-/* 135 */     if (object1 instanceof Number && object2 instanceof Number) {
-/* 136 */       return ((Number)object1).doubleValue() - ((Number)object2).doubleValue();
-/*     */     }
-/* 138 */     throw new SQLException("ZEval.evalCmp(): can't compare (" + object1.toString() + ") with (" + object2.toString() + ")");
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   double evalNumericExp(ZTuple paramZTuple, ZExpression paramZExpression) throws SQLException {
-/* 146 */     if (paramZTuple == null || paramZExpression == null || paramZExpression.getOperator() == null) {
-/* 147 */       throw new SQLException("ZEval.eval(): null argument or operator");
-/*     */     }
-/*     */     
-/* 150 */     String str = paramZExpression.getOperator();
-/*     */     
-/* 152 */     Object object = evalExpValue(paramZTuple, paramZExpression.getOperand(0));
-/* 153 */     if (!(object instanceof Double))
-/* 154 */       throw new SQLException("ZEval.evalNumericExp(): expression not numeric"); 
-/* 155 */     Double double_ = (Double)object;
-/*     */     
-/* 157 */     if (str.equals("+")) {
-/*     */       
-/* 159 */       double d = double_.doubleValue();
-/* 160 */       for (byte b = 1; b < paramZExpression.nbOperands(); b++) {
-/* 161 */         Object object1 = evalExpValue(paramZTuple, paramZExpression.getOperand(b));
-/* 162 */         d += ((Number)object1).doubleValue();
-/*     */       } 
-/* 164 */       return d;
-/*     */     } 
-/* 166 */     if (str.equals("-")) {
-/*     */       
-/* 168 */       double d = double_.doubleValue();
-/* 169 */       if (paramZExpression.nbOperands() == 1) return -d; 
-/* 170 */       for (byte b = 1; b < paramZExpression.nbOperands(); b++) {
-/* 171 */         Object object1 = evalExpValue(paramZTuple, paramZExpression.getOperand(b));
-/* 172 */         d -= ((Number)object1).doubleValue();
-/*     */       } 
-/* 174 */       return d;
-/*     */     } 
-/* 176 */     if (str.equals("*")) {
-/*     */       
-/* 178 */       double d = double_.doubleValue();
-/* 179 */       for (byte b = 1; b < paramZExpression.nbOperands(); b++) {
-/* 180 */         Object object1 = evalExpValue(paramZTuple, paramZExpression.getOperand(b));
-/* 181 */         d *= ((Number)object1).doubleValue();
-/*     */       } 
-/* 183 */       return d;
-/*     */     } 
-/* 185 */     if (str.equals("/")) {
-/*     */       
-/* 187 */       double d = double_.doubleValue();
-/* 188 */       for (byte b = 1; b < paramZExpression.nbOperands(); b++) {
-/* 189 */         Object object1 = evalExpValue(paramZTuple, paramZExpression.getOperand(b));
-/* 190 */         d /= ((Number)object1).doubleValue();
-/*     */       } 
-/* 192 */       return d;
-/*     */     } 
-/* 194 */     if (str.equals("**")) {
-/*     */       
-/* 196 */       double d = double_.doubleValue();
-/* 197 */       for (byte b = 1; b < paramZExpression.nbOperands(); b++) {
-/* 198 */         Object object1 = evalExpValue(paramZTuple, paramZExpression.getOperand(b));
-/* 199 */         d = Math.pow(d, ((Number)object1).doubleValue());
-/*     */       } 
-/* 201 */       return d;
-/*     */     } 
-/*     */     
-/* 204 */     throw new SQLException("ZEval.evalNumericExp(): Unknown operator " + str);
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public Object evalExpValue(ZTuple paramZTuple, ZExp paramZExp) throws SQLException {
-/* 217 */     Double double_ = null;
-/*     */     
-/* 219 */     if (paramZExp instanceof ZConstant)
-/*     */     { Object object2;
-/* 221 */       ZConstant zConstant = (ZConstant)paramZExp;
-/*     */       
-/* 223 */       switch (zConstant.getType())
-/*     */       
-/*     */       { 
-/*     */         case 0:
-/* 227 */           object2 = paramZTuple.getAttValue(zConstant.getValue());
-/* 228 */           if (object2 == null) {
-/* 229 */             throw new SQLException("ZEval.evalExpValue(): unknown column " + zConstant.getValue());
-/*     */           }
-/*     */           try {
-/* 232 */             double_ = new Double(object2.toString());
-/* 233 */           } catch (NumberFormatException numberFormatException) {
-/* 234 */             object1 = object2;
-/*     */           } 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */           
-/* 250 */           return object1;case 2: object1 = new Double(zConstant.getValue()); return object1; }  Object object1 = zConstant.getValue(); } else if (paramZExp instanceof ZExpression) { double_ = new Double(evalNumericExp(paramZTuple, (ZExpression)paramZExp)); }  return double_;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public static void main(String[] paramArrayOfString) {
-/*     */     try {
-/* 257 */       BufferedReader bufferedReader = new BufferedReader(new FileReader("test.db"));
-/* 258 */       String str = bufferedReader.readLine();
-/* 259 */       ZTuple zTuple = new ZTuple(str);
-/*     */       
-/* 261 */       ZqlParser zqlParser = new ZqlParser();
-/* 262 */       ZEval zEval = new ZEval();
-/*     */       
-/* 264 */       while ((str = bufferedReader.readLine()) != null) {
-/* 265 */         zTuple.setRow(str);
-/* 266 */         BufferedReader bufferedReader1 = new BufferedReader(new FileReader("test.sql"));
-/*     */         String str1;
-/* 268 */         while ((str1 = bufferedReader1.readLine()) != null) {
-/* 269 */           zqlParser.initParser(new ByteArrayInputStream(str1.getBytes()));
-/* 270 */           ZExp zExp = zqlParser.readExpression();
-/* 271 */           System.out.print(str + ", " + str1 + ", ");
-/* 272 */           System.out.println(zEval.eval(zTuple, zExp));
-/*     */         } 
-/* 274 */         bufferedReader1.close();
-/*     */       } 
-/* 276 */       bufferedReader.close();
-/* 277 */     } catch (Exception exception) {
-/* 278 */       exception.printStackTrace();
-/*     */     } 
-/*     */   }
-/*     */ }
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by FernFlower decompiler)
+//
 
+package Zql;
 
-/* Location:              /Users/liyongquan/Documents/file.nosync/private_project/EntryDB/lib/zql.jar!/Zql/ZEval.class
- * Java compiler version: 4 (48.0)
- * JD-Core Version:       1.1.3
- */
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.FileReader;
+import java.sql.SQLException;
+import java.util.Vector;
+
+public class ZEval {
+    public ZEval() {
+    }
+
+    public boolean eval(ZTuple var1, ZExp var2) throws SQLException {
+        if (var1 != null && var2 != null) {
+            if (!(var2 instanceof ZExpression)) {
+                throw new SQLException("ZEval.eval(): only expressions are supported");
+            } else {
+                ZExpression var3 = (ZExpression)var2;
+                String var4 = var3.getOperator();
+                int var6;
+                boolean var8;
+                if (var4.equals("AND")) {
+                    var8 = true;
+
+                    for(var6 = 0; var6 < var3.nbOperands(); ++var6) {
+                        var8 &= this.eval(var1, var3.getOperand(var6));
+                    }
+
+                    return var8;
+                } else if (var4.equals("OR")) {
+                    var8 = false;
+
+                    for(var6 = 0; var6 < var3.nbOperands(); ++var6) {
+                        var8 |= this.eval(var1, var3.getOperand(var6));
+                    }
+
+                    return var8;
+                } else if (var4.equals("NOT")) {
+                    return !this.eval(var1, var3.getOperand(0));
+                } else if (var4.equals("=")) {
+                    return this.evalCmp(var1, var3.getOperands()) == 0.0D;
+                } else if (var4.equals("!=")) {
+                    return this.evalCmp(var1, var3.getOperands()) != 0.0D;
+                } else if (var4.equals("<>")) {
+                    return this.evalCmp(var1, var3.getOperands()) != 0.0D;
+                } else if (var4.equals("#")) {
+                    throw new SQLException("ZEval.eval(): Operator # not supported");
+                } else if (var4.equals(">")) {
+                    return this.evalCmp(var1, var3.getOperands()) > 0.0D;
+                } else if (var4.equals(">=")) {
+                    return this.evalCmp(var1, var3.getOperands()) >= 0.0D;
+                } else if (var4.equals("<")) {
+                    return this.evalCmp(var1, var3.getOperands()) < 0.0D;
+                } else if (var4.equals("<=")) {
+                    return this.evalCmp(var1, var3.getOperands()) <= 0.0D;
+                } else {
+                    ZExpression var5;
+                    if (!var4.equals("BETWEEN") && !var4.equals("NOT BETWEEN")) {
+                        if (!var4.equals("LIKE") && !var4.equals("NOT LIKE")) {
+                            if (!var4.equals("IN") && !var4.equals("NOT IN")) {
+                                if (var4.equals("IS NULL")) {
+                                    if (var3.nbOperands() > 0 && var3.getOperand(0) != null) {
+                                        ZExp var7 = var3.getOperand(0);
+                                        if (var7 instanceof ZConstant) {
+                                            return ((ZConstant)var7).getType() == 1;
+                                        } else {
+                                            throw new SQLException("ZEval.eval(): can't eval IS (NOT) NULL");
+                                        }
+                                    } else {
+                                        return true;
+                                    }
+                                } else if (var4.equals("IS NOT NULL")) {
+                                    var5 = new ZExpression("IS NULL");
+                                    var5.setOperands(var3.getOperands());
+                                    return !this.eval(var1, var5);
+                                } else {
+                                    throw new SQLException("ZEval.eval(): Unknown operator " + var4);
+                                }
+                            } else {
+                                var5 = new ZExpression("OR");
+
+                                for(var6 = 1; var6 < var3.nbOperands(); ++var6) {
+                                    var5.addOperand(new ZExpression("=", var3.getOperand(0), var3.getOperand(var6)));
+                                }
+
+                                if (var4.equals("NOT IN")) {
+                                    return !this.eval(var1, var5);
+                                } else {
+                                    return this.eval(var1, var5);
+                                }
+                            }
+                        } else {
+                            throw new SQLException("ZEval.eval(): Operator (NOT) LIKE not supported");
+                        }
+                    } else {
+                        var5 = new ZExpression("AND", new ZExpression(">=", var3.getOperand(0), var3.getOperand(1)), new ZExpression("<=", var3.getOperand(0), var3.getOperand(2)));
+                        if (var4.equals("NOT BETWEEN")) {
+                            return !this.eval(var1, var5);
+                        } else {
+                            return this.eval(var1, var5);
+                        }
+                    }
+                }
+            }
+        } else {
+            throw new SQLException("ZEval.eval(): null argument or operator");
+        }
+    }
+
+    double evalCmp(ZTuple var1, Vector var2) throws SQLException {
+        if (var2.size() < 2) {
+            throw new SQLException("ZEval.evalCmp(): Trying to compare less than two values");
+        } else if (var2.size() > 2) {
+            throw new SQLException("ZEval.evalCmp(): Trying to compare more than two values");
+        } else {
+            Object var3 = null;
+            Object var4 = null;
+            var3 = this.evalExpValue(var1, (ZExp)var2.elementAt(0));
+            var4 = this.evalExpValue(var1, (ZExp)var2.elementAt(1));
+            if (!(var3 instanceof String) && !(var4 instanceof String)) {
+                if (var3 instanceof Number && var4 instanceof Number) {
+                    return ((Number)var3).doubleValue() - ((Number)var4).doubleValue();
+                } else {
+                    throw new SQLException("ZEval.evalCmp(): can't compare (" + var3.toString() + ") with (" + var4.toString() + ")");
+                }
+            } else {
+                return (double)(var3.equals(var4) ? 0 : -1);
+            }
+        }
+    }
+
+    double evalNumericExp(ZTuple var1, ZExpression var2) throws SQLException {
+        if (var1 != null && var2 != null && var2.getOperator() != null) {
+            String var3 = var2.getOperator();
+            Object var4 = this.evalExpValue(var1, var2.getOperand(0));
+            if (!(var4 instanceof Double)) {
+                throw new SQLException("ZEval.evalNumericExp(): expression not numeric");
+            } else {
+                Double var5 = (Double)var4;
+                double var6;
+                int var8;
+                Object var9;
+                if (var3.equals("+")) {
+                    var6 = var5;
+
+                    for(var8 = 1; var8 < var2.nbOperands(); ++var8) {
+                        var9 = this.evalExpValue(var1, var2.getOperand(var8));
+                        var6 += ((Number)var9).doubleValue();
+                    }
+
+                    return var6;
+                } else if (var3.equals("-")) {
+                    var6 = var5;
+                    if (var2.nbOperands() == 1) {
+                        return -var6;
+                    } else {
+                        for(var8 = 1; var8 < var2.nbOperands(); ++var8) {
+                            var9 = this.evalExpValue(var1, var2.getOperand(var8));
+                            var6 -= ((Number)var9).doubleValue();
+                        }
+
+                        return var6;
+                    }
+                } else if (var3.equals("*")) {
+                    var6 = var5;
+
+                    for(var8 = 1; var8 < var2.nbOperands(); ++var8) {
+                        var9 = this.evalExpValue(var1, var2.getOperand(var8));
+                        var6 *= ((Number)var9).doubleValue();
+                    }
+
+                    return var6;
+                } else if (var3.equals("/")) {
+                    var6 = var5;
+
+                    for(var8 = 1; var8 < var2.nbOperands(); ++var8) {
+                        var9 = this.evalExpValue(var1, var2.getOperand(var8));
+                        var6 /= ((Number)var9).doubleValue();
+                    }
+
+                    return var6;
+                } else if (!var3.equals("**")) {
+                    throw new SQLException("ZEval.evalNumericExp(): Unknown operator " + var3);
+                } else {
+                    var6 = var5;
+
+                    for(var8 = 1; var8 < var2.nbOperands(); ++var8) {
+                        var9 = this.evalExpValue(var1, var2.getOperand(var8));
+                        var6 = Math.pow(var6, ((Number)var9).doubleValue());
+                    }
+
+                    return var6;
+                }
+            }
+        } else {
+            throw new SQLException("ZEval.eval(): null argument or operator");
+        }
+    }
+
+    public Object evalExpValue(ZTuple var1, ZExp var2) throws SQLException {
+        Object var3 = null;
+        if (var2 instanceof ZConstant) {
+            ZConstant var4 = (ZConstant)var2;
+            switch(var4.getType()) {
+                case 0:
+                    Object var5 = var1.getAttValue(var4.getValue());
+                    if (var5 == null) {
+                        throw new SQLException("ZEval.evalExpValue(): unknown column " + var4.getValue());
+                    }
+
+                    try {
+                        var3 = new Double(var5.toString());
+                    } catch (NumberFormatException var7) {
+                        var3 = var5;
+                    }
+                    break;
+                case 1:
+                case 3:
+                default:
+                    var3 = var4.getValue();
+                    break;
+                case 2:
+                    var3 = new Double(var4.getValue());
+            }
+        } else if (var2 instanceof ZExpression) {
+            var3 = new Double(this.evalNumericExp(var1, (ZExpression)var2));
+        }
+
+        return var3;
+    }
+
+    public static void main(String[] var0) {
+        try {
+            BufferedReader var1 = new BufferedReader(new FileReader("test.db"));
+            String var2 = var1.readLine();
+            ZTuple var3 = new ZTuple(var2);
+            ZqlParser var4 = new ZqlParser();
+            ZEval var5 = new ZEval();
+
+            while((var2 = var1.readLine()) != null) {
+                var3.setRow(var2);
+                BufferedReader var6 = new BufferedReader(new FileReader("test.sql"));
+
+                String var7;
+                while((var7 = var6.readLine()) != null) {
+                    var4.initParser(new ByteArrayInputStream(var7.getBytes()));
+                    ZExp var8 = var4.readExpression();
+                    System.out.print(var2 + ", " + var7 + ", ");
+                    System.out.println(var5.eval(var3, var8));
+                }
+
+                var6.close();
+            }
+
+            var1.close();
+        } catch (Exception var9) {
+            var9.printStackTrace();
+        }
+
+    }
+}

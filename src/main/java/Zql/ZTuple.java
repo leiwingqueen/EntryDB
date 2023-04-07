@@ -1,246 +1,166 @@
-/*     */ package Zql;
-/*     */ 
-/*     */ import java.util.Hashtable;
-/*     */ import java.util.StringTokenizer;
-/*     */ import java.util.Vector;
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ public class ZTuple
-/*     */ {
-/*  30 */   private Vector attributes_ = new Vector();
-/*  31 */   private Vector values_ = new Vector();
-/*  32 */   private Hashtable searchTable_ = new Hashtable();
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public ZTuple() {}
-/*     */ 
-/*     */   
-/*     */   public ZTuple(String paramString) {
-/*  40 */     this();
-/*  41 */     StringTokenizer stringTokenizer = new StringTokenizer(paramString, ",");
-/*  42 */     while (stringTokenizer.hasMoreTokens()) {
-/*  43 */       setAtt(stringTokenizer.nextToken().trim(), null);
-/*     */     }
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public void setRow(String paramString) {
-/*  52 */     StringTokenizer stringTokenizer = new StringTokenizer(paramString, ",");
-/*  53 */     for (byte b = 0; stringTokenizer.hasMoreTokens(); b++) {
-/*  54 */       String str = stringTokenizer.nextToken().trim();
-/*     */       try {
-/*  56 */         Double double_ = new Double(str);
-/*  57 */         setAtt(getAttName(b), double_);
-/*  58 */       } catch (Exception exception) {
-/*  59 */         setAtt(getAttName(b), str);
-/*     */       } 
-/*     */     } 
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public void setRow(Vector paramVector) {
-/*  69 */     for (byte b = 0; b < paramVector.size(); b++) {
-/*  70 */       setAtt(getAttName(b), paramVector.elementAt(b));
-/*     */     }
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public void setAtt(String paramString, Object paramObject) {
-/*  82 */     if (paramString != null) {
-/*     */       
-/*  84 */       boolean bool = this.searchTable_.containsKey(paramString);
-/*     */       
-/*  86 */       if (bool) {
-/*     */         
-/*  88 */         int i = ((Integer)this.searchTable_.get(paramString)).intValue();
-/*  89 */         this.values_.setElementAt(paramObject, i);
-/*     */       }
-/*     */       else {
-/*     */         
-/*  93 */         int i = this.attributes_.size();
-/*  94 */         this.attributes_.addElement(paramString);
-/*  95 */         this.values_.addElement(paramObject);
-/*  96 */         this.searchTable_.put(paramString, new Integer(i));
-/*     */       } 
-/*     */     } 
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public String getAttName(int paramInt) {
-/*     */     try {
-/* 110 */       return this.attributes_.elementAt(paramInt);
-/*     */     }
-/* 112 */     catch (ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException) {
-/*     */       
-/* 114 */       return null;
-/*     */     } 
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public int getAttIndex(String paramString) {
-/* 125 */     if (paramString == null)
-/* 126 */       return -1; 
-/* 127 */     Integer integer = (Integer)this.searchTable_.get(paramString);
-/* 128 */     if (integer != null) {
-/* 129 */       return integer.intValue();
-/*     */     }
-/* 131 */     return -1;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public Object getAttValue(int paramInt) {
-/*     */     try {
-/* 143 */       return this.values_.elementAt(paramInt);
-/*     */     }
-/* 145 */     catch (ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException) {
-/*     */       
-/* 147 */       return null;
-/*     */     } 
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public Object getAttValue(String paramString) {
-/* 157 */     boolean bool = false;
-/*     */     
-/* 159 */     if (paramString != null) {
-/* 160 */       bool = this.searchTable_.containsKey(paramString);
-/*     */     }
-/* 162 */     if (bool) {
-/*     */       
-/* 164 */       int i = ((Integer)this.searchTable_.get(paramString)).intValue();
-/* 165 */       return this.values_.elementAt(i);
-/*     */     } 
-/*     */     
-/* 168 */     return null;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public boolean isAttribute(String paramString) {
-/* 178 */     if (paramString != null) {
-/* 179 */       return this.searchTable_.containsKey(paramString);
-/*     */     }
-/* 181 */     return false;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public int getNumAtt() {
-/* 190 */     return this.values_.size();
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public String toString() {
-/* 204 */     StringBuffer stringBuffer = new StringBuffer();
-/* 205 */     stringBuffer.append("[");
-/* 206 */     if (this.attributes_.size() > 0) {
-/*     */       String str1, str2;
-/* 208 */       Object object1 = this.attributes_.elementAt(0);
-/* 209 */       if (object1 == null) {
-/* 210 */         str1 = "(null)";
-/*     */       } else {
-/* 212 */         str1 = object1.toString();
-/*     */       } 
-/* 214 */       Object object2 = this.values_.elementAt(0);
-/* 215 */       if (object2 == null) {
-/* 216 */         str2 = "(null)";
-/*     */       } else {
-/* 218 */         str2 = object2.toString();
-/* 219 */       }  stringBuffer.append(str1 + " = " + str2);
-/*     */     } 
-/*     */     
-/* 222 */     for (byte b = 1; b < this.attributes_.size(); b++) {
-/*     */       String str1, str2;
-/* 224 */       Object object1 = this.attributes_.elementAt(b);
-/* 225 */       if (object1 == null) {
-/* 226 */         str1 = "(null)";
-/*     */       } else {
-/* 228 */         str1 = object1.toString();
-/*     */       } 
-/* 230 */       Object object2 = this.values_.elementAt(b);
-/* 231 */       if (object2 == null) {
-/* 232 */         str2 = "(null)";
-/*     */       } else {
-/* 234 */         str2 = object2.toString();
-/* 235 */       }  stringBuffer.append(", " + str1 + " = " + str2);
-/*     */     } 
-/* 237 */     stringBuffer.append("]");
-/* 238 */     return stringBuffer.toString();
-/*     */   }
-/*     */ }
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by FernFlower decompiler)
+//
 
+package Zql;
 
-/* Location:              /Users/liyongquan/Documents/file.nosync/private_project/EntryDB/lib/zql.jar!/Zql/ZTuple.class
- * Java compiler version: 4 (48.0)
- * JD-Core Version:       1.1.3
- */
+import java.util.Hashtable;
+import java.util.StringTokenizer;
+import java.util.Vector;
+
+public class ZTuple {
+    private Vector attributes_;
+    private Vector values_;
+    private Hashtable searchTable_;
+
+    public ZTuple() {
+        this.attributes_ = new Vector();
+        this.values_ = new Vector();
+        this.searchTable_ = new Hashtable();
+    }
+
+    public ZTuple(String var1) {
+        this();
+        StringTokenizer var2 = new StringTokenizer(var1, ",");
+
+        while(var2.hasMoreTokens()) {
+            this.setAtt(var2.nextToken().trim(), (Object)null);
+        }
+
+    }
+
+    public void setRow(String var1) {
+        StringTokenizer var2 = new StringTokenizer(var1, ",");
+
+        for(int var3 = 0; var2.hasMoreTokens(); ++var3) {
+            String var4 = var2.nextToken().trim();
+
+            try {
+                Double var5 = new Double(var4);
+                this.setAtt(this.getAttName(var3), var5);
+            } catch (Exception var6) {
+                this.setAtt(this.getAttName(var3), var4);
+            }
+        }
+
+    }
+
+    public void setRow(Vector var1) {
+        for(int var2 = 0; var2 < var1.size(); ++var2) {
+            this.setAtt(this.getAttName(var2), var1.elementAt(var2));
+        }
+
+    }
+
+    public void setAtt(String var1, Object var2) {
+        if (var1 != null) {
+            boolean var3 = this.searchTable_.containsKey(var1);
+            int var4;
+            if (var3) {
+                var4 = (Integer)this.searchTable_.get(var1);
+                this.values_.setElementAt(var2, var4);
+            } else {
+                var4 = this.attributes_.size();
+                this.attributes_.addElement(var1);
+                this.values_.addElement(var2);
+                this.searchTable_.put(var1, new Integer(var4));
+            }
+        }
+
+    }
+
+    public String getAttName(int var1) {
+        try {
+            return (String)this.attributes_.elementAt(var1);
+        } catch (ArrayIndexOutOfBoundsException var3) {
+            return null;
+        }
+    }
+
+    public int getAttIndex(String var1) {
+        if (var1 == null) {
+            return -1;
+        } else {
+            Integer var2 = (Integer)this.searchTable_.get(var1);
+            return var2 != null ? var2 : -1;
+        }
+    }
+
+    public Object getAttValue(int var1) {
+        try {
+            return this.values_.elementAt(var1);
+        } catch (ArrayIndexOutOfBoundsException var3) {
+            return null;
+        }
+    }
+
+    public Object getAttValue(String var1) {
+        boolean var2 = false;
+        if (var1 != null) {
+            var2 = this.searchTable_.containsKey(var1);
+        }
+
+        if (var2) {
+            int var3 = (Integer)this.searchTable_.get(var1);
+            return this.values_.elementAt(var3);
+        } else {
+            return null;
+        }
+    }
+
+    public boolean isAttribute(String var1) {
+        return var1 != null ? this.searchTable_.containsKey(var1) : false;
+    }
+
+    public int getNumAtt() {
+        return this.values_.size();
+    }
+
+    public String toString() {
+        StringBuffer var5 = new StringBuffer();
+        var5.append("[");
+        Object var1;
+        Object var2;
+        String var3;
+        String var4;
+        if (this.attributes_.size() > 0) {
+            var1 = this.attributes_.elementAt(0);
+            if (var1 == null) {
+                var3 = "(null)";
+            } else {
+                var3 = var1.toString();
+            }
+
+            var2 = this.values_.elementAt(0);
+            if (var2 == null) {
+                var4 = "(null)";
+            } else {
+                var4 = var2.toString();
+            }
+
+            var5.append(var3 + " = " + var4);
+        }
+
+        for(int var6 = 1; var6 < this.attributes_.size(); ++var6) {
+            var1 = this.attributes_.elementAt(var6);
+            if (var1 == null) {
+                var3 = "(null)";
+            } else {
+                var3 = var1.toString();
+            }
+
+            var2 = this.values_.elementAt(var6);
+            if (var2 == null) {
+                var4 = "(null)";
+            } else {
+                var4 = var2.toString();
+            }
+
+            var5.append(", " + var3 + " = " + var4);
+        }
+
+        var5.append("]");
+        return var5.toString();
+    }
+}

@@ -1,149 +1,122 @@
-/*     */ package Zql;
-/*     */ 
-/*     */ import java.util.Enumeration;
-/*     */ import java.util.Hashtable;
-/*     */ import java.util.Vector;
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ public class ZUpdate
-/*     */   implements ZStatement
-/*     */ {
-/*     */   String table_;
-/*  13 */   String alias_ = null;
-/*     */   Hashtable set_;
-/*  15 */   ZExp where_ = null;
-/*  16 */   Vector columns_ = null;
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public ZUpdate(String paramString) {
-/*  22 */     this.table_ = new String(paramString);
-/*     */   }
-/*     */   
-/*     */   public String getTable() {
-/*  26 */     return this.table_;
-/*     */   }
-/*     */   
-/*  29 */   public void setAlias(String paramString) { this.alias_ = paramString; } public String getAlias() {
-/*  30 */     return this.alias_;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public void addSet(Hashtable paramHashtable) {
-/*  40 */     this.set_ = paramHashtable;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public Hashtable getSet() {
-/*  49 */     return this.set_;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public void addColumnUpdate(String paramString, ZExp paramZExp) {
-/*  58 */     if (this.set_ == null) this.set_ = new Hashtable(); 
-/*  59 */     this.set_.put(paramString, paramZExp);
-/*  60 */     if (this.columns_ == null) this.columns_ = new Vector(); 
-/*  61 */     this.columns_.addElement(paramString);
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public ZExp getColumnUpdate(String paramString) {
-/*  71 */     return (ZExp)this.set_.get(paramString);
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public ZExp getColumnUpdate(int paramInt) {
-/*  84 */     if (--paramInt < 0) return null; 
-/*  85 */     if (this.columns_ == null || paramInt >= this.columns_.size()) return null; 
-/*  86 */     String str = this.columns_.elementAt(paramInt);
-/*  87 */     return (ZExp)this.set_.get(str);
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public String getColumnUpdateName(int paramInt) {
-/*  99 */     if (--paramInt < 0) return null; 
-/* 100 */     if (this.columns_ == null || paramInt >= this.columns_.size()) return null; 
-/* 101 */     return this.columns_.elementAt(paramInt);
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public int getColumnUpdateCount() {
-/* 108 */     if (this.set_ == null) return 0; 
-/* 109 */     return this.set_.size();
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public void addWhere(ZExp paramZExp) {
-/* 116 */     this.where_ = paramZExp;
-/*     */   }
-/*     */ 
-/*     */ 
-/*     */   
-/*     */   public ZExp getWhere() {
-/* 122 */     return this.where_;
-/*     */   } public String toString() {
-/*     */     Enumeration enumeration;
-/* 125 */     StringBuffer stringBuffer = new StringBuffer("update " + this.table_);
-/* 126 */     if (this.alias_ != null) stringBuffer.append(" " + this.alias_); 
-/* 127 */     stringBuffer.append(" set ");
-/*     */ 
-/*     */     
-/* 130 */     if (this.columns_ != null) { enumeration = this.columns_.elements(); }
-/* 131 */     else { enumeration = this.set_.keys(); }
-/* 132 */      boolean bool = true;
-/* 133 */     while (enumeration.hasMoreElements()) {
-/* 134 */       String str = enumeration.nextElement().toString();
-/* 135 */       if (!bool) stringBuffer.append(", "); 
-/* 136 */       stringBuffer.append(str + "=" + this.set_.get(str).toString());
-/* 137 */       bool = false;
-/*     */     } 
-/*     */     
-/* 140 */     if (this.where_ != null) stringBuffer.append(" where " + this.where_.toString()); 
-/* 141 */     return stringBuffer.toString();
-/*     */   }
-/*     */ }
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by FernFlower decompiler)
+//
 
+package Zql;
 
-/* Location:              /Users/liyongquan/Documents/file.nosync/private_project/EntryDB/lib/zql.jar!/Zql/ZUpdate.class
- * Java compiler version: 4 (48.0)
- * JD-Core Version:       1.1.3
- */
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Vector;
+
+public class ZUpdate implements ZStatement {
+    String table_;
+    String alias_ = null;
+    Hashtable set_;
+    ZExp where_ = null;
+    Vector columns_ = null;
+
+    public ZUpdate(String var1) {
+        this.table_ = new String(var1);
+    }
+
+    public String getTable() {
+        return this.table_;
+    }
+
+    public void setAlias(String var1) {
+        this.alias_ = var1;
+    }
+
+    public String getAlias() {
+        return this.alias_;
+    }
+
+    public void addSet(Hashtable var1) {
+        this.set_ = var1;
+    }
+
+    public Hashtable getSet() {
+        return this.set_;
+    }
+
+    public void addColumnUpdate(String var1, ZExp var2) {
+        if (this.set_ == null) {
+            this.set_ = new Hashtable();
+        }
+
+        this.set_.put(var1, var2);
+        if (this.columns_ == null) {
+            this.columns_ = new Vector();
+        }
+
+        this.columns_.addElement(var1);
+    }
+
+    public ZExp getColumnUpdate(String var1) {
+        return (ZExp)this.set_.get(var1);
+    }
+
+    public ZExp getColumnUpdate(int var1) {
+        --var1;
+        if (var1 < 0) {
+            return null;
+        } else if (this.columns_ != null && var1 < this.columns_.size()) {
+            String var2 = (String)this.columns_.elementAt(var1);
+            return (ZExp)this.set_.get(var2);
+        } else {
+            return null;
+        }
+    }
+
+    public String getColumnUpdateName(int var1) {
+        --var1;
+        if (var1 < 0) {
+            return null;
+        } else {
+            return this.columns_ != null && var1 < this.columns_.size() ? (String)this.columns_.elementAt(var1) : null;
+        }
+    }
+
+    public int getColumnUpdateCount() {
+        return this.set_ == null ? 0 : this.set_.size();
+    }
+
+    public void addWhere(ZExp var1) {
+        this.where_ = var1;
+    }
+
+    public ZExp getWhere() {
+        return this.where_;
+    }
+
+    public String toString() {
+        StringBuffer var1 = new StringBuffer("update " + this.table_);
+        if (this.alias_ != null) {
+            var1.append(" " + this.alias_);
+        }
+
+        var1.append(" set ");
+        Enumeration var2;
+        if (this.columns_ != null) {
+            var2 = this.columns_.elements();
+        } else {
+            var2 = this.set_.keys();
+        }
+
+        for(boolean var3 = true; var2.hasMoreElements(); var3 = false) {
+            String var4 = var2.nextElement().toString();
+            if (!var3) {
+                var1.append(", ");
+            }
+
+            var1.append(var4 + "=" + this.set_.get(var4).toString());
+        }
+
+        if (this.where_ != null) {
+            var1.append(" where " + this.where_.toString());
+        }
+
+        return var1.toString();
+    }
+}
