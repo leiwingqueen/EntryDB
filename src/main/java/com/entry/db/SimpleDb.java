@@ -48,7 +48,8 @@ public class SimpleDb {
                             else if (s.equalsIgnoreCase("string"))
                                 ts[index++] = Type.STRING_TYPE;
                             else {
-                                System.err.println("Unknown type " + s);
+                                // System.err.println("Unknown type " + s);
+                                log.error("Unknown type " + s);
                                 return;
                             }
                         }

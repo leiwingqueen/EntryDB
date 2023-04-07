@@ -178,14 +178,16 @@ public class Catalog {
                     else if (els2[1].trim().equalsIgnoreCase("string"))
                         types.add(Type.STRING_TYPE);
                     else {
-                        System.out.println("Unknown type " + els2[1]);
+                        // System.out.println("Unknown type " + els2[1]);
+                        log.error("Unknown type " + els2[1]);
                         System.exit(0);
                     }
                     if (els2.length == 3) {
                         if (els2[2].trim().equals("pk"))
                             primaryKey = els2[0].trim();
                         else {
-                            System.out.println("Unknown annotation " + els2[2]);
+                            // System.out.println("Unknown annotation " + els2[2]);
+                            log.error("Unknown annotation " + els2[2]);
                             System.exit(0);
                         }
                     }

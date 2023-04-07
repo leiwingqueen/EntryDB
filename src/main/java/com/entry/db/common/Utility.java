@@ -1,6 +1,7 @@
 package com.entry.db.common;
 
 import com.entry.db.storage.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,6 +12,7 @@ import java.util.UUID;
 /**
  * Helper methods used for testing and implementing random features.
  */
+@Slf4j
 public class Utility {
     /**
      * @return a Type array of length len populated with Type.INT_TYPE
@@ -91,7 +93,8 @@ public class Utility {
      */
     public static Tuple getTuple(int[] tupledata, int width) {
         if (tupledata.length != width) {
-            System.out.println("get Hash Tuple has the wrong length~");
+            log.info("get Tuple has the wrong length~");
+            // System.out.println("get Hash Tuple has the wrong length~");
             System.exit(1);
         }
         Tuple tup = new Tuple(getTupleDesc(width));

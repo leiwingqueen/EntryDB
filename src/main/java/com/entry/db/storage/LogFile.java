@@ -3,6 +3,7 @@ package com.entry.db.storage;
 import com.entry.db.common.Database;
 import com.entry.db.common.Debug;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.EOFException;
 import java.io.File;
@@ -76,6 +77,7 @@ must not be declared synchronized and must begin with a block like:
  *
  * </ul>
  */
+@Slf4j
 public class LogFile {
 
     final File logFile;
@@ -305,7 +307,8 @@ public class LogFile {
             throws IOException {
         Debug.log("BEGIN");
         if (tidToFirstLogRecord.get(tid.getId()) != null) {
-            System.err.print("logXactionBegin: already began this tid\n");
+            log.error("logXactionBegin: already began this tid:{}", tid);
+            // System.err.print("logXactionBegin: already began this tid\n");
             throw new IOException("double logXactionBegin()");
         }
         preAppend();
@@ -519,7 +522,8 @@ public class LogFile {
             logCheckpoint();  //simple way to shutdown is to write a checkpoint record
             raf.close();
         } catch (IOException e) {
-            System.out.println("ERROR SHUTTING DOWN -- IGNORING.");
+            log.info("ERROR SHUTTING DOWN -- IGNORING.");
+            // System.out.println("ERROR SHUTTING DOWN -- IGNORING.");
             e.printStackTrace();
         }
     }

@@ -7,9 +7,11 @@ import com.entry.db.storage.HeapFile;
 import com.entry.db.storage.Tuple;
 import com.entry.db.storage.TupleDesc;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 
+@Slf4j
 public class Lab1Test {
     public static final String FILE_PATH = "src/resources/some_data_file.dat";
 
@@ -40,7 +42,7 @@ public class Lab1Test {
             f.close();
             Database.getBufferPool().transactionComplete(tid);
         } catch (Exception e) {
-            System.out.println("Exception : " + e);
+            log.error("Exception : " + e);
         }
     }
 }
