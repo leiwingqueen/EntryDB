@@ -3,6 +3,7 @@ package com.entry.db.common;
 import com.entry.db.storage.DbFile;
 import com.entry.db.storage.HeapFile;
 import com.entry.db.storage.TupleDesc;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @Threadsafe
  */
+@Slf4j
 public class Catalog {
     // <tableId,TableInf>
     private Map<Integer, TableInf> tableInfMap;
@@ -193,13 +195,13 @@ public class Catalog {
                 TupleDesc t = new TupleDesc(typeAr, namesAr);
                 HeapFile tabHf = new HeapFile(new File(baseFolder + "/" + name + ".dat"), t);
                 addTable(tabHf, name, primaryKey);
-                System.out.println("Added table : " + name + " with schema " + t);
+                log.info("Added table : " + name + " with schema " + t);
             }
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(0);
         } catch (IndexOutOfBoundsException e) {
-            System.out.println("Invalid catalog entry : " + line);
+            log.error("Error parsing line: " + line);
             System.exit(0);
         }
     }

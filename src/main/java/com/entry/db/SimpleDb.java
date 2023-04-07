@@ -6,10 +6,12 @@ import com.entry.db.common.Utility;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
 
+@Slf4j
 public class SimpleDb {
     public static void main(String[] args)
             throws DbException, TransactionAbortedException {
@@ -18,7 +20,8 @@ public class SimpleDb {
             case "convert":
                 try {
                     if (args.length < 3 || args.length > 5) {
-                        System.err.println("Unexpected number of arguments to convert ");
+                        // System.err.println("Unexpected number of arguments to convert ");
+                        log.error("Unexpected number of arguments to convert ");
                         return;
                     }
                     File sourceTxtFile = new File(args[1]);
@@ -34,7 +37,8 @@ public class SimpleDb {
                         String typeString = args[3];
                         String[] typeStringAr = typeString.split(",");
                         if (typeStringAr.length != numOfAttributes) {
-                            System.err.println("The number of types does not agree with the number of columns");
+                            // System.err.println("The number of types does not agree with the number of columns");
+                            log.error("The number of types does not agree with the number of columns");
                             return;
                         }
                         int index = 0;
@@ -67,7 +71,8 @@ public class SimpleDb {
                 DbFileIterator it = table.iterator(tid);
 
                 if (null == it) {
-                    System.out.println("Error: method HeapFile.iterator(TransactionId tid) not yet implemented!");
+                    log.info("Error: method HeapFile.iterator(TransactionId tid) not yet implemented!");
+                    // System.out.println("Error: method HeapFile.iterator(TransactionId tid) not yet implemented!");
                 } else {
                     it.open();
                     while (it.hasNext()) {
@@ -90,15 +95,17 @@ public class SimpleDb {
                     java.lang.reflect.Method m = c.getMethod("main", s);
                     m.invoke(null, (Object) newargs);
                 } catch (ClassNotFoundException cne) {
-                    System.out.println("Class Parser not found -- perhaps you are trying to run the parser as a part of lab1?");
+                    // System.out.println("Class Parser not found -- perhaps you are trying to run the parser as a part of lab1?");
+                    log.error("Class Parser not found -- perhaps you are trying to run the parser as a part of lab1?");
                 } catch (Exception e) {
-                    System.out.println("Error in parser.");
+                    log.error("Error in parser.");
                     e.printStackTrace();
                 }
 
                 break;
             default:
-                System.err.println("Unknown command: " + args[0]);
+                // System.err.println("Unknown command: " + args[0]);
+                log.error("Unknown command: " + args[0]);
                 System.exit(1);
         }
     }
