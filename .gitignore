@@ -1,0 +1,11 @@
+/.idea/
+/bin/
+/dist/
+/log
+/out
+/target
+/lib
+.DS_Store
+simple1.db
+simple2.db
+*.iml

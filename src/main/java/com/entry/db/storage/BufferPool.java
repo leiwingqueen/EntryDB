@@ -1,0 +1,433 @@
+package com.entry.db.storage;
+
+import com.entry.db.common.*;
+import com.entry.db.transaction.LockManager;
+import com.entry.db.transaction.SimpleLockManager;
+import com.entry.db.transaction.TransactionAbortedException;
+import com.entry.db.transaction.TransactionId;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * BufferPool manages the reading and writing of pages into memory from
+ * disk. Access methods call into it to retrieve pages, and it fetches
+ * pages from the appropriate location.
+ * <p>
+ * The BufferPool is also responsible for locking;  when a transaction fetches
+ * a page, BufferPool checks that the transaction has the appropriate
+ * locks to read/write the page.
+ *
+ * @Threadsafe, all fields are final
+ */
+public class BufferPool {
+    /**
+     * Bytes per page, including header.
+     * 4k page size
+     */
+    private static final int DEFAULT_PAGE_SIZE = 4096;
+
+    private static int pageSize = DEFAULT_PAGE_SIZE;
+
+    private LockManager lockManager;
+
+    /**
+     * Default number of pages passed to the constructor. This is used by
+     * other classes. BufferPool should use the numPages argument to the
+     * constructor instead.
+     */
+    public static final int DEFAULT_PAGES = 50;
+
+    // fix size pageTable
+    private Page[] pageTable;
+    // key-pageId,value-frameId
+    private Map<PageId, Integer> pageId2FrameIdMap;
+    // free list. O(1) to find the free space(used to call frame) to allocate the page
+    private Deque<Integer> freeList;
+    // page evict policy. we can simply use lru strategy.
+    // link list+hash map
+    private Map<PageId, LruNode> lruMap;
+    private LruNode head;
+    private LruNode tail;
+    // private int pageSize = DEFAULT_PAGE_SIZE;
+
+    /**
+     * Creates a BufferPool that caches up to numPages pages.
+     *
+     * @param numPages maximum number of pages in this buffer pool.
+     */
+    public BufferPool(int numPages) {
+        // some code goes here
+        pageTable = new Page[numPages];
+        // pageSize = DEFAULT_PAGE_SIZE;
+        pageId2FrameIdMap = new ConcurrentHashMap<>();
+        freeList = new LinkedList<>();
+        for (int i = 0; i < numPages; i++) {
+            freeList.add(i);
+        }
+        // lru data structure init
+        lruMap = new HashMap<>();
+        head = new LruNode(null);
+        tail = new LruNode(null);
+        head.next = tail;
+        tail.pre = head;
+        lockManager = new SimpleLockManager();
+    }
+
+    public static int getPageSize() {
+        return pageSize;
+        // return Database.getBufferPool().pageSize;
+    }
+
+    // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
+    public static void setPageSize(int pageSize) {
+        BufferPool.pageSize = pageSize;
+        // Database.getBufferPool().pageSize = pageSize;
+    }
+
+    // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
+    public static void resetPageSize() {
+        BufferPool.pageSize = DEFAULT_PAGE_SIZE;
+        // Database.getBufferPool().pageSize = DEFAULT_PAGE_SIZE;
+    }
+
+    /**
+     * Retrieve the specified page with the associated permissions.
+     * Will acquire a lock and may block if that lock is held by another
+     * transaction.
+     * <p>
+     * The retrieved page should be looked up in the buffer pool.  If it
+     * is present, it should be returned.  If it is not present, it should
+     * be added to the buffer pool and returned.  If there is insufficient
+     * space in the buffer pool, a page should be evicted and the new page
+     * should be added in its place.
+     *
+     * @param tid  the ID of the transaction requesting the page
+     * @param pid  the ID of the requested page
+     * @param perm the requested permissions on the page
+     */
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
+            throws TransactionAbortedException, DbException {
+        // some code goes here
+        // acquire lock
+        LockManager.LockMode lockMode = Permissions.READ_ONLY == perm ? LockManager.LockMode.S_LOCK : LockManager.LockMode.X_LOCK;
+        lockManager.acquire(lockMode, tid, pid);
+        Page page;
+        if (pageId2FrameIdMap.containsKey(pid)) {
+            Integer frameId = pageId2FrameIdMap.get(pid);
+            // update lru map
+            lruUpdate(pid);
+            page = pageTable[frameId];
+        } else {
+            if (freeList.size() == 0) {
+                // throw new DbException("not enough space to allocate page");
+                // TODO: what if the pin count case
+                evictPage();
+            }
+            Integer frameId = freeList.pollFirst();
+            // load data from disk(random access disk)
+            Catalog catalog = Database.getCatalog();
+            DbFile dbFile = catalog.getDatabaseFile(pid.getTableId());
+            page = dbFile.readPage(pid);
+            pageTable[frameId] = page;
+            pageId2FrameIdMap.put(pid, frameId);
+            // update lru cache
+            lruUpdate(pid);
+        }
+        return page;
+    }
+
+    /**
+     * Releases the lock on a page.
+     * Calling this is very risky, and may result in wrong behavior. Think hard
+     * about who needs to call this and why, and why they can run the risk of
+     * calling it.
+     *
+     * @param tid the ID of the transaction requesting the unlock
+     * @param pid the ID of the page to unlock
+     */
+    public void unsafeReleasePage(TransactionId tid, PageId pid) {
+        // some code goes here
+        // not necessary for lab1|lab2
+        lockManager.release(tid, pid);
+    }
+
+    /**
+     * Release all locks associated with a given transaction.
+     *
+     * @param tid the ID of the transaction requesting the unlock
+     */
+    public void transactionComplete(TransactionId tid) {
+        // some code goes here
+        // not necessary for lab1|lab2
+        lockManager.releaseAll(tid);
+    }
+
+    /**
+     * Return true if the specified transaction has a lock on the specified page
+     */
+    public boolean holdsLock(TransactionId tid, PageId p) {
+        // some code goes here
+        // not necessary for lab1|lab2
+        return lockManager.holdsLock(tid, p) != null;
+    }
+
+    /**
+     * Commit or abort a given transaction; release all locks associated to
+     * the transaction.
+     *
+     * @param tid    the ID of the transaction requesting the unlock
+     * @param commit a flag indicating whether we should commit or abort
+     */
+    public void transactionComplete(TransactionId tid, boolean commit) {
+        Debug.log("transactionComplete...tid:%s,commit:%b", tid, commit);
+        // some code goes here
+        // not necessary for lab1|lab2
+        // release all the log and flush all the dirty page into the disk
+        Iterator<PageId> pageIdIterator = lockManager.findAllLockPage(tid);
+        List<PageId> pageIds = new ArrayList<>();
+        while (pageIdIterator.hasNext()) {
+            PageId pageId = pageIdIterator.next();
+            if (commit) {
+                // force policy
+                try {
+                    flushPage(pageId);
+                    // use current page to replace the before image
+                    Page page = getPage(tid, pageId, Permissions.READ_ONLY);
+                    page.setBeforeImage();
+                } catch (IOException | DbException | TransactionAbortedException e) {
+                    e.printStackTrace();
+                    // TODO: should we need to throw an exception?
+                }
+            } else {
+                if (pageId2FrameIdMap.containsKey(pageId)) {
+                    Integer frameId = pageId2FrameIdMap.get(pageId);
+                    Page page = pageTable[frameId];
+                    if (page.isDirty() != null) {
+                        Debug.log("page rollback...tid:%s,pageId:%s", tid, page.getId());
+                        pageTable[frameId] = page.getBeforeImage();
+                    }
+                } else {
+                    // no dirty page can swap out from memory. in this case, we should do nothing
+                }
+            }
+            pageIds.add(pageId);
+        }
+        for (PageId pageId : pageIds) {
+            lockManager.release(tid, pageId);
+        }
+    }
+
+    /**
+     * Add a tuple to the specified table on behalf of transaction tid.  Will
+     * acquire a write lock on the page the tuple is added to and any other
+     * pages that are updated (Lock acquisition is not needed for lab2).
+     * May block if the lock(s) cannot be acquired.
+     * <p>
+     * Marks any pages that were dirtied by the operation as dirty by calling
+     * their markDirty bit, and adds versions of any pages that have
+     * been dirtied to the cache (replacing any existing versions of those pages) so
+     * that future requests see up-to-date pages.
+     *
+     * @param tid     the transaction adding the tuple
+     * @param tableId the table to add the tuple to
+     * @param t       the tuple to add
+     */
+    public void insertTuple(TransactionId tid, int tableId, Tuple t)
+            throws DbException, IOException, TransactionAbortedException {
+        // some code goes here
+        // not necessary for lab1
+        Debug.log("insert tuple...tid:%s,tuple:%s", tid, t);
+        Catalog catalog = Database.getCatalog();
+        DbFile dbFile = catalog.getDatabaseFile(tableId);
+        // update buffer pool data
+        List<Page> pages = dbFile.insertTuple(tid, t);
+        refreshDirtyPages(tid, pages);
+    }
+
+    /**
+     * Remove the specified tuple from the buffer pool.
+     * Will acquire a write lock on the page the tuple is removed from and any
+     * other pages that are updated. May block if the lock(s) cannot be acquired.
+     * <p>
+     * Marks any pages that were dirtied by the operation as dirty by calling
+     * their markDirty bit, and adds versions of any pages that have
+     * been dirtied to the cache (replacing any existing versions of those pages) so
+     * that future requests see up-to-date pages.
+     *
+     * @param tid the transaction deleting the tuple.
+     * @param t   the tuple to delete
+     */
+    public void deleteTuple(TransactionId tid, Tuple t)
+            throws DbException, IOException, TransactionAbortedException {
+        // some code goes here
+        // not necessary for lab1
+        Debug.log("delete tuple...tid:%s,tuple:%s", tid, t);
+        Catalog catalog = Database.getCatalog();
+        PageId pageId = t.getRecordId().getPageId();
+        DbFile dbFile = catalog.getDatabaseFile(pageId.getTableId());
+        List<Page> pages = dbFile.deleteTuple(tid, t);
+        refreshDirtyPages(tid, pages);
+    }
+
+    // mark dirty
+    private void refreshDirtyPages(TransactionId tid, List<Page> pages) throws DbException {
+        for (Page page : pages) {
+            page.markDirty(true, tid);
+        }
+    }
+
+    /**
+     * Flush all dirty pages to disk.
+     * NB: Be careful using this routine -- it writes dirty data to disk so will
+     * break simpledb if running in NO STEAL mode.
+     */
+    public synchronized void flushAllPages() throws IOException {
+        // some code goes here
+        // not necessary for lab1
+        for (PageId pageId : pageId2FrameIdMap.keySet()) {
+            flushPage(pageId);
+        }
+    }
+
+    /**
+     * Remove the specific page id from the buffer pool.
+     * Needed by the recovery manager to ensure that the
+     * buffer pool doesn't keep a rolled back page in its
+     * cache.
+     * <p>
+     * Also used by B+ tree files to ensure that deleted pages
+     * are removed from the cache so they can be reused safely
+     */
+    public synchronized void removePage(PageId pid) {
+        // some code goes here
+        // not necessary for lab1
+        if (!pageId2FrameIdMap.containsKey(pid)) {
+            return;
+        }
+        Integer frameId = pageId2FrameIdMap.get(pid);
+        pageId2FrameIdMap.remove(pid);
+        freeList.add(frameId);
+        lruRemove(pid);
+    }
+
+    /**
+     * Flushes a certain page to disk
+     *
+     * @param pid an ID indicating the page to flush
+     */
+    private synchronized void flushPage(PageId pid) throws IOException {
+        // some code goes here
+        // not necessary for lab1
+        if (!pageId2FrameIdMap.containsKey(pid)) {
+            return;
+        }
+        Integer frameId = pageId2FrameIdMap.get(pid);
+        DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        Page page = pageTable[frameId];
+        if (page.isDirty() != null) {
+            // append an update record to the log, with
+            // a before-image and after-image.
+            // redo log
+            LogFile logFile = Database.getLogFile();
+            logFile.logWrite(page.isDirty(), page.getBeforeImage(), page);
+            logFile.force();
+            // TODO: no force strategy. shall we need to remove the code following?
+            page.markDirty(false, null);
+            dbFile.writePage(page);
+        }
+    }
+
+    /**
+     * Write all pages of the specified transaction to disk.
+     */
+    public synchronized void flushPages(TransactionId tid) throws IOException {
+        // TODO: some code goes here
+        // not necessary for lab1|lab2
+    }
+
+    public LockManager getLockManager() {
+        return lockManager;
+    }
+
+    /**
+     * Discards a page from the  pool.
+     * Flushes the page to disk to ensure dirty pages are updated on disk.
+     */
+    private synchronized void evictPage() throws DbException {
+        // some code goes here
+        // not necessary for lab1
+        if (head.next == tail) {
+            throw new DbException("no page to evict");
+        }
+        LruNode node = head.next;
+        Page pageEvict = null;
+        while (node != tail) {
+            Integer frameId = pageId2FrameIdMap.get(node.pageId);
+            Page page = pageTable[frameId];
+            if (page.isDirty() == null) {
+                pageEvict = page;
+                break;
+            }
+            node = node.next;
+        }
+        if (pageEvict == null) {
+            throw new DbException("no page to evict");
+        }
+        Debug.log("evict page...page:%s", pageEvict.getId());
+        // lru cache update
+        lruRemove(pageEvict.getId());
+        // Integer frameId = pageId2FrameIdMap.get(node.pageId);
+        // flush dirty page
+        /*Page page = pageTable[frameId];
+        if (page.isDirty() != null) {
+            try {
+                flushPage(node.pageId);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new DbException("flush page error");
+            }
+        }*/
+        Integer frameId = pageId2FrameIdMap.get(pageEvict.getId());
+        pageId2FrameIdMap.remove(pageEvict.getId());
+        freeList.add(frameId);
+    }
+
+    private void lruRemove(PageId pageId) {
+        if (!lruMap.containsKey(pageId)) {
+            return;
+        }
+        LruNode lruNode = lruMap.get(pageId);
+        LruNode pre = lruNode.pre;
+        LruNode next = lruNode.next;
+        pre.next = next;
+        next.pre = pre;
+        lruMap.remove(pageId);
+    }
+
+    private void lruUpdate(PageId pageId) {
+        if (lruMap.containsKey(pageId)) {
+            lruRemove(pageId);
+        }
+        // append new node to the end
+        LruNode node = new LruNode(pageId);
+        LruNode pre = tail.pre;
+        pre.next = node;
+        node.pre = pre;
+        node.next = tail;
+        tail.pre = node;
+        lruMap.put(pageId, node);
+    }
+
+    private static class LruNode {
+        PageId pageId;
+        LruNode pre;
+        LruNode next;
+
+        public LruNode(PageId pageId) {
+            this.pageId = pageId;
+        }
+    }
+
+}
