@@ -10,6 +10,7 @@ import com.entry.db.storage.Tuple;
 import com.entry.db.storage.TupleDesc;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.NoSuchElementException;
 
@@ -18,6 +19,7 @@ import java.util.NoSuchElementException;
  * each tuple of a table in no particular order (e.g., as they are laid out on
  * disk).
  */
+@Slf4j
 public class SeqScan implements OpIterator {
 
     private static final long serialVersionUID = 1L;
@@ -47,7 +49,7 @@ public class SeqScan implements OpIterator {
         this.txId = tid;
         DbFile dbFile = Database.getCatalog().getDatabaseFile(tableid);
         iterator = dbFile.iterator(tid);
-        Debug.log(1, "build sequence scan...tableId:%d,txId:%d", tableid, tid.getId());
+        log.debug("build sequence scan...tableId:{},txId:{}", tableid, tid.getId());
     }
 
     /**

@@ -3,6 +3,7 @@ package com.entry.db.index;
 import com.entry.db.common.*;
 import com.entry.db.storage.*;
 import com.entry.db.execution.Predicate;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.util.Iterator;
@@ -15,6 +16,7 @@ import java.util.NoSuchElementException;
  * @see BTreeFile
  * @see BufferPool
  */
+@Slf4j
 public class BTreeLeafPage extends BTreePage {
     private final byte[] header;
     private final Tuple[] tuples;
@@ -352,7 +354,7 @@ public class BTreeLeafPage extends BTreePage {
 
         // insert new record into the correct spot in sorted order
         markSlotUsed(goodSlot, true);
-        Debug.log(1, "BTreeLeafPage.insertTuple: new tuple, tableId = %d pageId = %d slotId = %d", pid.getTableId(), pid.getPageNumber(), goodSlot);
+        log.debug("BTreeLeafPage.insertTuple: new tuple, tableId = {} pageId = {} slotId = {}", pid.getTableId(), pid.getPageNumber(), goodSlot);
         RecordId rid = new RecordId(pid, goodSlot);
         t.setRecordId(rid);
         tuples[goodSlot] = t;
@@ -469,8 +471,7 @@ public class BTreeLeafPage extends BTreePage {
     private void markSlotUsed(int i, boolean value) {
         int headerbit = i % 8;
         int headerbyte = (i - headerbit) / 8;
-
-        Debug.log(1, "BTreeLeafPage.setSlot: setting slot %d to %b", i, value);
+        log.debug("BTreeLeafPage.setSlot: setting slot {} to {}", i, value);
         if (value)
             header[headerbyte] |= 1 << headerbit;
         else
@@ -479,7 +480,7 @@ public class BTreeLeafPage extends BTreePage {
 
     /**
      * @return an iterator over all tuples on this page (calling remove on this iterator throws an UnsupportedOperationException)
-     *         (note that this iterator shouldn't return tuples in empty slots!)
+     * (note that this iterator shouldn't return tuples in empty slots!)
      */
     public Iterator<Tuple> iterator() {
         return new BTreeLeafPageIterator(this);
@@ -487,7 +488,7 @@ public class BTreeLeafPage extends BTreePage {
 
     /**
      * @return a reverse iterator over all tuples on this page (calling remove on this iterator throws an UnsupportedOperationException)
-     *         (note that this iterator shouldn't return tuples in empty slots!)
+     * (note that this iterator shouldn't return tuples in empty slots!)
      */
     public Iterator<Tuple> reverseIterator() {
         return new BTreeLeafPageReverseIterator(this);
@@ -507,11 +508,10 @@ public class BTreeLeafPage extends BTreePage {
 
         try {
             if (!isSlotUsed(i)) {
-                Debug.log(1, "BTreeLeafPage.getTuple: slot %d in %d:%d is not used", i, pid.getTableId(), pid.getPageNumber());
+                log.debug("BTreeLeafPage.getTuple: slot {} in {}:{} is not used", i, pid.getTableId(), pid.getPageNumber());
                 return null;
             }
-
-            Debug.log(1, "BTreeLeafPage.getTuple: returning tuple %d", i);
+            log.debug("BTreeLeafPage.getTuple: returning tuple {}", i);
             return tuples[i];
 
         } catch (ArrayIndexOutOfBoundsException e) {

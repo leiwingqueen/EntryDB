@@ -15,6 +15,7 @@ import com.entry.db.storage.Tuple;
 import com.entry.db.storage.TupleDesc;
 import com.entry.db.transaction.Transaction;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.impl.completer.ArgumentCompleter;
@@ -27,6 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+@Slf4j
 public class Parser {
     static boolean explain = false;
 
@@ -208,7 +210,7 @@ public class Parser {
                                     + ") not supported.");
                 }
                 groupByField = ((ZConstant) gbe).getValue();
-                System.out.println("GROUP BY FIELD : " + groupByField);
+                log.info("GROUP BY FIELD : " + groupByField);
             }
 
         }
@@ -235,8 +237,10 @@ public class Parser {
                 aggField = ((ZConstant) ((ZExpression) si.getExpression())
                         .getOperand(0)).getValue();
                 aggFun = si.getAggregate();
-                System.out.println("Aggregate field is " + aggField
-                        + ", agg fun is : " + aggFun);
+                log.info("AGGREGATE FIELD : " + aggField + ", AGGREGATE FUN : "
+                        + aggFun);
+                //System.out.println("Aggregate field is " + aggField
+                //        + ", agg fun is : " + aggFun);
                 lp.addProjectField(aggField, aggFun);
             } else {
                 if (groupByField != null
@@ -304,7 +308,6 @@ public class Parser {
 
                 java.lang.reflect.Method m = c.getMethod(
                         "updateOperatorCardinality", p, h, h);
-
                 System.out.println("The query plan is:");
                 m.invoke(null, physicalPlan,
                         lp.getTableAliasToIdMapping(), TableStats.getStatsMap());
@@ -439,8 +442,10 @@ public class Parser {
                 curtrans.commit();
                 curtrans = null;
                 inUserTrans = false;
-                System.out.println("Transaction " + curtrans.getId().getId()
+                log.info("Transaction " + curtrans.getId().getId()
                         + " committed.");
+                //System.out.println("Transaction " + curtrans.getId().getId()
+                //        + " committed.");
                 break;
             case "ROLLBACK":
                 if (curtrans == null)
@@ -449,8 +454,10 @@ public class Parser {
                 curtrans.abort();
                 curtrans = null;
                 inUserTrans = false;
-                System.out.println("Transaction " + curtrans.getId().getId()
+                log.info("Transaction " + curtrans.getId().getId()
                         + " aborted.");
+                //System.out.println("Transaction " + curtrans.getId().getId()
+                //        + " aborted.");
 
                 break;
             case "SET TRANSACTION":
@@ -460,8 +467,10 @@ public class Parser {
                 curtrans = new Transaction();
                 curtrans.start();
                 inUserTrans = true;
-                System.out.println("Started a new transaction tid = "
+                log.info("Started a new transaction tid = "
                         + curtrans.getId().getId());
+                //System.out.println("Started a new transaction tid = "
+                //        + curtrans.getId().getId());
                 break;
             default:
                 throw new ParsingException("Unsupported operation");
@@ -518,8 +527,10 @@ public class Parser {
                 if (!this.inUserTrans) {
                     curtrans = new Transaction();
                     curtrans.start();
-                    System.out.println("Started a new transaction tid = "
+                    log.info("Started a new transaction tid = "
                             + curtrans.getId().getId());
+                    //System.out.println("Started a new transaction tid = "
+                    //        + curtrans.getId().getId());
                 }
                 try {
                     if (s instanceof ZInsert)
@@ -532,10 +543,12 @@ public class Parser {
                         query = handleQueryStatement((ZQuery) s,
                                 curtrans.getId());
                     else {
-                        System.out
+                        log.info("Can't parse " + s
+                                + "\n -- parser only handles SQL transactions, insert, delete, and select statements");
+                        /**System.out
                                 .println("Can't parse "
                                         + s
-                                        + "\n -- parser only handles SQL transactions, insert, delete, and select statements");
+                                        + "\n -- parser only handles SQL transactions, insert, delete, and select statements");*/
                     }
                     if (query != null)
                         query.execute();
@@ -549,9 +562,11 @@ public class Parser {
                     // Whenever error happens, abort the current transaction
                     if (curtrans != null) {
                         curtrans.abort();
-                        System.out.println("Transaction "
-                                + curtrans.getId().getId()
+                        log.info("Transaction " + curtrans.getId().getId()
                                 + " aborted because of unhandled error");
+                        /*System.out.println("Transaction "
+                                + curtrans.getId().getId()
+                                + " aborted because of unhandled error");*/
                     }
                     this.inUserTrans = false;
 
@@ -573,13 +588,15 @@ public class Parser {
                 throw new RuntimeException(e);
             }
         } catch (ParsingException e) {
-            System.out
-                    .println("Invalid SQL expression: \n \t" + e.getMessage());
+            log.error("Invalid SQL expression: \n \t" + e.getMessage());
+            /*System.out
+                    .println("Invalid SQL expression: \n \t" + e.getMessage());*/
             if (expectNoErrors) {
                 throw new RuntimeException(e);
             }
         } catch (ParseException | TokenMgrError e) {
-            System.out.println("Invalid SQL expression: \n \t " + e);
+            log.info("Invalid SQL expression: \n \t " + e);
+            // System.out.println("Invalid SQL expression: \n \t " + e);
             if (expectNoErrors) {
                 throw new RuntimeException(e);
             }
@@ -594,7 +611,8 @@ public class Parser {
     public static void main(String[] argv) throws IOException {
 
         if (argv.length < 1 || argv.length > 4) {
-            System.out.println("Invalid number of arguments.\n" + usage);
+            log.error("Invalid number of arguments.\n" + usage);
+            // System.out.println("Invalid number of arguments.\n" + usage);
             System.exit(0);
         }
 
@@ -607,7 +625,8 @@ public class Parser {
     static final int SLEEP_TIME = 1000;
 
     protected void shutdown() {
-        System.out.println("Bye");
+        log.info("Bye");
+        // System.out.println("Bye");
     }
 
     protected boolean interactive = true;
@@ -627,15 +646,17 @@ public class Parser {
                 } else if (argv[i].equals("-f")) {
                     interactive = false;
                     if (i++ == argv.length) {
-                        System.out.println("Expected file name after -f\n"
-                                + usage);
+                        log.error("Expected file name after -f\n" + usage);
+                        /*System.out.println("Expected file name after -f\n"
+                                + usage);*/
                         System.exit(0);
                     }
                     queryFile = argv[i];
 
                 } else {
-                    System.out.println("Unknown argument " + argv[i] + "\n "
-                            + usage);
+                    log.error("Unknown argument " + argv[i] + "\n " + usage);
+                    /*System.out.println("Unknown argument " + argv[i] + "\n "
+                            + usage);*/
                 }
             }
         }
