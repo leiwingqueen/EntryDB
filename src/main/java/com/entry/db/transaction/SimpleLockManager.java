@@ -2,11 +2,13 @@ package com.entry.db.transaction;
 
 import com.entry.db.common.Debug;
 import com.entry.db.storage.PageId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
 // reference https://www.geeksforgeeks.org/implementation-of-locking-in-dbms/
 // 《database system concepts》chapter figure 18.10
+@Slf4j
 public class SimpleLockManager implements LockManager {
     private Map<PageId, LockData> _lockTable;
     // use to find all the page which transaction holds
@@ -23,10 +25,10 @@ public class SimpleLockManager implements LockManager {
     @Override
     public void acquire(LockManager.LockMode lockMode, TransactionId txId, PageId pageId) throws TransactionAbortedException {
         if (tryAcquire(lockMode, txId, pageId)) {
-            Debug.log(1, "get lock success...mode:%s,txId:%s,pageId:%s,thread:%s", lockMode, txId, pageId, Thread.currentThread());
+            log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
             return;
         }
-        Debug.log(1, "get lock fail...mode:%s,txId:%s,pageId:%s", lockMode, txId, pageId);
+        log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
         LockNode lockNode = new LockNode(lockMode, txId);
         synchronized (this) {
             LockData lockData = _lockTable.get(pageId);
@@ -37,7 +39,7 @@ public class SimpleLockManager implements LockManager {
                     continue;
                 }
                 if (!_txWaitForGraph.addEdge(txId, holdTxId)) {
-                    Debug.log(1, "dead lock found,throw TxAbortException");
+                    log.debug("dead lock found,throw TxAbortException");
                     for (TransactionId to : lockData.holding.keySet()) {
                         _txWaitForGraph.removeEdge(txId, to);
                     }
@@ -65,7 +67,7 @@ public class SimpleLockManager implements LockManager {
 
     @Override
     public void release(TransactionId txId, PageId pageId) {
-        Debug.log("lock release...txId:%s,pageId:%s,thread:%s", txId, pageId, Thread.currentThread());
+        log.debug("lock release...txId:{},pageId:{},thread:{}", txId, pageId, Thread.currentThread());
         LockData lockData;
         synchronized (this) {
             lockData = _lockTable.get(pageId);
@@ -76,7 +78,7 @@ public class SimpleLockManager implements LockManager {
         // case: txId is in waiting list, remove it from waiting list
         synchronized (this) {
             if (lockData.waiting.remove(txId)) {
-                Debug.log("remove from waiting list...txId:%d,pageId:%s", txId.getId(), pageId);
+                log.debug("remove from waiting list...txId:{},pageId:{}", txId, pageId);
                 for (TransactionId holdTxId : lockData.holding.keySet()) {
                     if (holdTxId.equals(txId)) {
                         continue;
@@ -107,15 +109,15 @@ public class SimpleLockManager implements LockManager {
             // wake up the first transaction in waiting list
             while (lockData.waiting.size() > 0) {
                 LockNode node = lockData.waiting.peekFirst();
-                Debug.log("try to awake transaction...%s,waiting list size:%d", node.txId, lockData.waiting.size());
+                log.debug("try to awake transaction...{},waiting list size:{}", node.txId, lockData.waiting.size());
                 if (!tryAcquire(node.lockMode, node.txId, pageId)) {
                     return;
                 }
-                Debug.log(1, "get lock success...mode:%s,txId:%s,pageId:%s,thread:%s", node.lockMode, node.txId, pageId, Thread.currentThread());
+                log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", node.lockMode, node.txId, pageId, Thread.currentThread());
                 lockData.waiting.pollFirst();
                 // notify
                 synchronized (node) {
-                    Debug.log("notify transaction...%s", node.txId);
+                    log.debug("notify transaction...{}", node.txId);
                     node.notify();
                 }
             }

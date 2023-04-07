@@ -7,6 +7,7 @@ import com.entry.db.common.Permissions;
 import com.entry.db.transaction.LockManager;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.util.*;
@@ -21,6 +22,7 @@ import java.util.*;
  * @author Sam Madden
  * @see HeapPage#HeapPage
  */
+@Slf4j
 public class HeapFile implements DbFile {
     private File file;
     private TupleDesc tupleDesc;
@@ -158,7 +160,7 @@ public class HeapFile implements DbFile {
         }
         // update buffer pool
         selectPage.insertTuple(t);
-        Debug.log("insert tuple[success]...pageId:%s,tid:%s", selectPage.getId(), tid);
+        log.debug("insert tuple[success]...pageId:{},tid:{}", selectPage.getId(), tid);
         return Arrays.asList(selectPage);
     }
 
@@ -238,11 +240,11 @@ public class HeapFile implements DbFile {
                 // we should call buffer pool when we get a page from disk.
                 HeapPage curPage = (HeapPage) bufferPool.getPage(txId, new HeapPageId(tableId, pageNum), Permissions.READ_ONLY);
                 while (slotNum < curPage.numSlots && !curPage.isSlotUsed(slotNum)) {
-                    Debug.log("skip unused slot...pageNum:%d,slotNum:%d,totalPage:%d", pageNum, slotNum, numPages);
+                    log.debug("skip unused slot...pageNum:{},slotNum:{},totalPage:{}", pageNum, slotNum, numPages);
                     slotNum++;
                 }
                 if (slotNum < curPage.numSlots) {
-                    Debug.log("fetch next tuple...pageNum:%d,slotNum:%d,totalPage:%d", pageNum, slotNum, numPages);
+                    log.debug("fetch next tuple...pageNum:{},slotNum:{},totalPage:{}", pageNum, slotNum, numPages);
                     nextTuple = curPage.tuples[slotNum];
                     slotNum++;
                     // move to the next page
@@ -255,7 +257,7 @@ public class HeapFile implements DbFile {
                 pageNum++;
                 slotNum = 0;
             }
-            Debug.log("no more tuple");
+            log.debug("no more tuple...pageNum:{},slotNum:{},totalPage:{}", pageNum, slotNum, numPages);
             return false;
         }
 

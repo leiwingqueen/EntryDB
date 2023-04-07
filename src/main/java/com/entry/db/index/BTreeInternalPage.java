@@ -6,6 +6,7 @@ import com.entry.db.storage.BufferPool;
 import com.entry.db.storage.Field;
 import com.entry.db.storage.IntField;
 import com.entry.db.storage.RecordId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.util.Iterator;
@@ -18,6 +19,7 @@ import java.util.NoSuchElementException;
  * @see BTreeFile
  * @see BufferPool
  */
+@Slf4j
 public class BTreeInternalPage extends BTreePage {
     private final byte[] header;
     private final Field[] keys;
@@ -541,7 +543,7 @@ public class BTreeInternalPage extends BTreePage {
 
         // insert new entry into the correct spot in sorted order
         markSlotUsed(goodSlot, true);
-        Debug.log(1, "BTreeLeafPage.insertEntry: new entry, tableId = %d pageId = %d slotId = %d", pid.getTableId(), pid.getPageNumber(), goodSlot);
+        log.debug("BTreeLeafPage.insertEntry: new entry, tableId = " + pid.getTableId() + " pageId = " + pid.getPageNumber() + " slotId = " + goodSlot);
         keys[goodSlot] = e.getKey();
         children[goodSlot] = e.getRightChild().getPageNumber();
         e.setRecordId(new RecordId(pid, goodSlot));
@@ -595,8 +597,7 @@ public class BTreeInternalPage extends BTreePage {
     private void markSlotUsed(int i, boolean value) {
         int headerbit = i % 8;
         int headerbyte = (i - headerbit) / 8;
-
-        Debug.log(1, "BTreeInternalPage.setSlot: setting slot %d to %b", i, value);
+        log.debug("BTreeInternalPage.markSlotUsed: setting slot " + i + " to " + value);
         if (value)
             header[headerbyte] |= 1 << headerbit;
         else
@@ -605,7 +606,7 @@ public class BTreeInternalPage extends BTreePage {
 
     /**
      * @return an iterator over all entries on this page (calling remove on this iterator throws an UnsupportedOperationException)
-     *         (note that this iterator shouldn't return entries in empty slots!)
+     * (note that this iterator shouldn't return entries in empty slots!)
      */
     public Iterator<BTreeEntry> iterator() {
         return new BTreeInternalPageIterator(this);
@@ -613,7 +614,7 @@ public class BTreeInternalPage extends BTreePage {
 
     /**
      * @return a reverse iterator over all entries on this page (calling remove on this iterator throws an UnsupportedOperationException)
-     *         (note that this iterator shouldn't return entries in empty slots!)
+     * (note that this iterator shouldn't return entries in empty slots!)
      */
     public Iterator<BTreeEntry> reverseIterator() {
         return new BTreeInternalPageReverseIterator(this);
@@ -634,11 +635,10 @@ public class BTreeInternalPage extends BTreePage {
 
         try {
             if (!isSlotUsed(i)) {
-                Debug.log(1, "BTreeInternalPage.getKey: slot %d in %d:%d is not used", i, pid.getTableId(), pid.getPageNumber());
+                log.debug("BTreeInternalPage.getKey: slot " + i + " in " + pid.getTableId() + ":" + pid.getPageNumber() + " is not used");
                 return null;
             }
-
-            Debug.log(1, "BTreeInternalPage.getKey: returning key %d", i);
+            log.debug("BTreeInternalPage.getKey: returning key " + i);
             return keys[i];
 
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -660,11 +660,10 @@ public class BTreeInternalPage extends BTreePage {
 
         try {
             if (!isSlotUsed(i)) {
-                Debug.log(1, "BTreeInternalPage.getChildId: slot %d in %d:%d is not used", i, pid.getTableId(), pid.getPageNumber());
+                log.debug("BTreeInternalPage.getChildId: slot " + i + " in " + pid.getTableId() + ":" + pid.getPageNumber() + " is not used");
                 return null;
             }
-
-            Debug.log(1, "BTreeInternalPage.getChildId: returning child id %d", i);
+            log.debug("BTreeInternalPage.getChildId: returning child id " + i);
             return new BTreePageId(pid.getTableId(), children[i], childCategory);
 
         } catch (ArrayIndexOutOfBoundsException e) {

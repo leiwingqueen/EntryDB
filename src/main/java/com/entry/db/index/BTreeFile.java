@@ -10,6 +10,7 @@ import com.entry.db.storage.*;
 import com.entry.db.transaction.LockManager;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.util.*;
@@ -27,6 +28,7 @@ import java.util.*;
  * @see BTreeHeaderPage#BTreeHeaderPage
  * @see BTreeRootPtrPage#BTreeRootPtrPage
  */
+@Slf4j
 public class BTreeFile implements DbFile {
 
     private final File f;
@@ -99,7 +101,7 @@ public class BTreeFile implements DbFile {
                     throw new IllegalArgumentException("Unable to read "
                             + BTreeRootPtrPage.getPageSize() + " bytes from BTreeFile");
                 }
-                Debug.log(1, "BTreeFile.readPage: read page %d", id.getPageNumber());
+                log.debug("BTreeFile.readPage: read page {}", id.getPageNumber());
                 return new BTreeRootPtrPage(id, pageBuf);
             } else {
                 byte[] pageBuf = new byte[BufferPool.getPageSize()];
@@ -116,7 +118,7 @@ public class BTreeFile implements DbFile {
                     throw new IllegalArgumentException("Unable to read "
                             + BufferPool.getPageSize() + " bytes from BTreeFile");
                 }
-                Debug.log(1, "BTreeFile.readPage: read page %d", id.getPageNumber());
+                log.debug("BTreeFile.readPage: read page {}", id.getPageNumber());
                 if (id.pgcateg() == BTreePageId.INTERNAL) {
                     return new BTreeInternalPage(id, pageBuf, keyField);
                 } else if (id.pgcateg() == BTreePageId.LEAF) {
@@ -1413,6 +1415,7 @@ class BTreeReverseFileIterator extends AbstractDbFileIterator {
  * Helper class that implements the DbFileIterator for search tuples on a
  * B+ Tree File
  */
+@Slf4j
 class BTreeSearchIterator extends AbstractDbFileIterator {
 
     Iterator<Tuple> it = null;
@@ -1449,7 +1452,7 @@ class BTreeSearchIterator extends AbstractDbFileIterator {
         } else {
             curp = f.findLeafPage(tid, root, null, true);
         }
-        Debug.log("find leaf page...pageId:%s", curp.pid);
+        log.debug("find leaf page...pageId:{}", curp.pid);
         it = curp.iterator();
     }
 
@@ -1512,6 +1515,7 @@ class BTreeSearchIterator extends AbstractDbFileIterator {
 }
 
 // add by leiwingqueen
+@Slf4j
 class BTreeReverseSearchIterator extends AbstractDbFileIterator {
 
     Iterator<Tuple> it = null;
@@ -1548,7 +1552,7 @@ class BTreeReverseSearchIterator extends AbstractDbFileIterator {
         } else {
             curp = f.findLeafPage(tid, root, null, false);
         }
-        Debug.log("find leaf page...pageId:%s", curp.pid);
+        log.debug("find leaf page...pageId:{}", curp.pid);
         it = curp.reverseIterator();
     }
 

@@ -8,6 +8,7 @@ import com.entry.db.storage.Field;
 import com.entry.db.storage.IntField;
 import com.entry.db.storage.Page;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import java.util.Arrays;
  * @see BTreeFile
  * @see BufferPool
  */
+@Slf4j
 public class BTreeHeaderPage implements Page {
     private volatile boolean dirty = false;
     private volatile TransactionId dirtier = null;
@@ -289,8 +291,7 @@ public class BTreeHeaderPage implements Page {
     public void markSlotUsed(int i, boolean value) {
         int headerbit = i % 8;
         int headerbyte = (i - headerbit) / 8;
-
-        Debug.log(1, "BTreeHeaderPage.setSlot: setting slot %d to %b", i, value);
+        log.debug("BTreeHeaderPage.setSlot: setting slot {} to {}", i, value);
         if (value)
             header[headerbyte] |= 1 << headerbit;
         else

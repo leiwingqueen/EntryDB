@@ -5,6 +5,7 @@ import com.entry.db.transaction.LockManager;
 import com.entry.db.transaction.SimpleLockManager;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.*;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @Threadsafe, all fields are final
  */
+@Slf4j
 public class BufferPool {
     /**
      * Bytes per page, including header.
@@ -181,7 +183,7 @@ public class BufferPool {
      * @param commit a flag indicating whether we should commit or abort
      */
     public void transactionComplete(TransactionId tid, boolean commit) {
-        Debug.log("transactionComplete...tid:%s,commit:%b", tid, commit);
+        log.debug("transactionComplete...tid:{},commit:{}", tid, commit);
         // some code goes here
         // not necessary for lab1|lab2
         // release all the log and flush all the dirty page into the disk
@@ -205,7 +207,7 @@ public class BufferPool {
                     Integer frameId = pageId2FrameIdMap.get(pageId);
                     Page page = pageTable[frameId];
                     if (page.isDirty() != null) {
-                        Debug.log("page rollback...tid:%s,pageId:%s", tid, page.getId());
+                        log.debug("page rollback...tid:{},pageId:{}", tid, page.getId());
                         pageTable[frameId] = page.getBeforeImage();
                     }
                 } else {
@@ -238,7 +240,7 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        Debug.log("insert tuple...tid:%s,tuple:%s", tid, t);
+        log.debug("insert tuple...tid:{},tuple:{}", tid, t);
         Catalog catalog = Database.getCatalog();
         DbFile dbFile = catalog.getDatabaseFile(tableId);
         // update buffer pool data
@@ -263,7 +265,7 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        Debug.log("delete tuple...tid:%s,tuple:%s", tid, t);
+        log.debug("delete tuple...tid:{},tuple:{}", tid, t);
         Catalog catalog = Database.getCatalog();
         PageId pageId = t.getRecordId().getPageId();
         DbFile dbFile = catalog.getDatabaseFile(pageId.getTableId());
@@ -375,7 +377,7 @@ public class BufferPool {
         if (pageEvict == null) {
             throw new DbException("no page to evict");
         }
-        Debug.log("evict page...page:%s", pageEvict.getId());
+        log.debug("evict page...page:{}", pageEvict.getId());
         // lru cache update
         lruRemove(pageEvict.getId());
         // Integer frameId = pageId2FrameIdMap.get(node.pageId);

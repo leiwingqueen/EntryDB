@@ -186,7 +186,7 @@ public class LogFile {
      */
     public synchronized void logCommit(TransactionId tid) throws IOException {
         preAppend();
-        Debug.log("LOG FILE COMMIT...txId:%d", tid.getId());
+        log.debug("LOG FILE COMMIT...txId:{}", tid.getId());
         //should we verify that this is a live transaction?
 
         raf.writeInt(COMMIT_RECORD);
@@ -209,7 +209,7 @@ public class LogFile {
     public synchronized void logWrite(TransactionId tid, Page before,
                                       Page after)
             throws IOException {
-        Debug.log("WRITE, offset = " + raf.getFilePointer());
+        log.debug("LOG FILE WRITE...txId:{},offset:{}", tid.getId(), raf.getFilePointer());
         preAppend();
         /* update record conists of
 
@@ -227,7 +227,7 @@ public class LogFile {
         raf.writeLong(currentOffset);
         currentOffset = raf.getFilePointer();
 
-        Debug.log("WRITE OFFSET = " + currentOffset);
+        log.debug("WRITE OFFSET = {}", currentOffset);
     }
 
     void writePageData(RandomAccessFile raf, Page p) throws IOException {
@@ -305,7 +305,7 @@ public class LogFile {
      */
     public synchronized void logXactionBegin(TransactionId tid)
             throws IOException {
-        Debug.log("BEGIN");
+        log.debug("LOG FILE BEGIN...txId:{}", tid.getId());
         if (tidToFirstLogRecord.get(tid.getId()) != null) {
             log.error("logXactionBegin: already began this tid:{}", tid);
             // System.err.print("logXactionBegin: already began this tid\n");
@@ -318,7 +318,7 @@ public class LogFile {
         tidToFirstLogRecord.put(tid.getId(), currentOffset);
         currentOffset = raf.getFilePointer();
 
-        Debug.log("BEGIN OFFSET = " + currentOffset);
+        log.debug("BEGIN OFFSET = {}", currentOffset);
     }
 
     /**
@@ -343,7 +343,7 @@ public class LogFile {
                 raf.writeInt(keys.size());
                 while (els.hasNext()) {
                     Long key = els.next();
-                    Debug.log("WRITING CHECKPOINT TRANSACTION ID: " + key);
+                    log.debug("CHECKPOINT TRANSACTION ID:{}", key);
                     raf.writeLong(key);
                     //Debug.log("WRITING CHECKPOINT TRANSACTION OFFSET: " + tidToFirstLogRecord.get(key));
                     raf.writeLong(tidToFirstLogRecord.get(key));
@@ -412,7 +412,7 @@ public class LogFile {
                 long record_tid = raf.readLong();
                 long newStart = logNew.getFilePointer();
 
-                Debug.log("NEW START = " + newStart);
+                log.debug("NEW START = {}", newStart);
 
                 logNew.writeInt(type);
                 logNew.writeLong(record_tid);
@@ -449,7 +449,8 @@ public class LogFile {
             }
         }
 
-        Debug.log("TRUNCATING LOG;  WAS " + raf.length() + " BYTES ; NEW START : " + minLogRecord + " NEW LENGTH: " + (raf.length() - minLogRecord));
+        log.debug("TRUNCATING LOG;  WAS {} BYTES ; NEW START : {} NEW LENGTH: {}", raf.length(), minLogRecord, (raf.length() - minLogRecord));
+        // Debug.log("TRUNCATING LOG;  WAS " + raf.length() + " BYTES ; NEW START : " + minLogRecord + " NEW LENGTH: " + (raf.length() - minLogRecord));
 
         raf.close();
         logFile.delete();

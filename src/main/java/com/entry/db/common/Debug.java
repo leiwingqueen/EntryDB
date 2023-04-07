@@ -11,6 +11,8 @@ package com.entry.db.common;
  * level number is less than or equal to the currently set DEBUG_LEVEL.
  */
 
+// use logback to replace this class
+@Deprecated
 public class Debug {
     private static final int DEBUG_LEVEL;
 
