@@ -37,7 +37,7 @@ public class Lab1Test {
             f.open();
             while (f.hasNext()) {
                 Tuple tup = f.next();
-                System.out.println(tup);
+                log.info("{}", tup);
             }
             f.close();
             Database.getBufferPool().transactionComplete(tid);
