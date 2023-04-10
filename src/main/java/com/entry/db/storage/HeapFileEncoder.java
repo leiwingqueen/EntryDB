@@ -95,7 +95,7 @@ public class HeapFileEncoder {
     public static void convert(File inFile, File outFile, int npagebytes,
                                int numFields, Type[] typeAr, char fieldSeparator)
             throws IOException {
-        log.info("convert[start]...inFile:{},outFile:{}", inFile.getAbsolutePath(), outFile.getAbsolutePath());
+        log.debug("convert[start]...inFile:{},outFile:{}", inFile.getAbsolutePath(), outFile.getAbsolutePath());
         int nrecbytes = 0;
         for (int i = 0; i < numFields; i++) {
             nrecbytes += typeAr[i].getLen();
@@ -225,6 +225,6 @@ public class HeapFileEncoder {
         }
         br.close();
         os.close();
-        log.info("convert[success]...inFile:{},outFile:{}", inFile.getAbsolutePath(), outFile.getAbsolutePath());
+        log.debug("convert[success]...inFile:{},outFile:{}", inFile.getAbsolutePath(), outFile.getAbsolutePath());
     }
 }
