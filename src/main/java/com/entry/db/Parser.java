@@ -301,7 +301,7 @@ public class Parser {
         if (physicalPlan != null) {
             Class<?> c;
             try {
-                c = Class.forName("optimizer.OperatorCardinality");
+                c = Class.forName("com.entry.db.optimizer.OperatorCardinality");
 
                 Class<?> p = Operator.class;
                 Class<?> h = Map.class;
@@ -311,7 +311,7 @@ public class Parser {
                 System.out.println("The query plan is:");
                 m.invoke(null, physicalPlan,
                         lp.getTableAliasToIdMapping(), TableStats.getStatsMap());
-                c = Class.forName("optimizer.QueryPlanVisualizer");
+                c = Class.forName("com.entry.db.optimizer.QueryPlanVisualizer");
                 m = c.getMethod(
                         "printQueryPlanTree", OpIterator.class, System.out.getClass());
                 m.invoke(c.newInstance(), physicalPlan, System.out);

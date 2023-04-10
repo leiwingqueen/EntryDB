@@ -2,6 +2,7 @@ package com.entry.db.storage;
 
 import com.entry.db.common.Type;
 import com.entry.db.common.Utility;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.util.Arrays;
@@ -14,7 +15,7 @@ import java.util.List;
  * Pages are padded out to a specified length, and written consecutive in a
  * data file.
  */
-
+@Slf4j
 public class HeapFileEncoder {
 
     /**
@@ -94,7 +95,7 @@ public class HeapFileEncoder {
     public static void convert(File inFile, File outFile, int npagebytes,
                                int numFields, Type[] typeAr, char fieldSeparator)
             throws IOException {
-
+        log.debug("convert[start]...inFile:{},outFile:{}", inFile.getAbsolutePath(), outFile.getAbsolutePath());
         int nrecbytes = 0;
         for (int i = 0; i < numFields; i++) {
             nrecbytes += typeAr[i].getLen();
@@ -224,5 +225,6 @@ public class HeapFileEncoder {
         }
         br.close();
         os.close();
+        log.debug("convert[success]...inFile:{},outFile:{}", inFile.getAbsolutePath(), outFile.getAbsolutePath());
     }
 }

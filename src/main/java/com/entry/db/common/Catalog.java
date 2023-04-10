@@ -128,7 +128,10 @@ public class Catalog {
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return null;
+        if (!tableInfMap.containsKey(tableid)) {
+            return "";
+        }
+        return tableInfMap.get(tableid).getPkeyField();
     }
 
     public Iterator<Integer> tableIdIterator() {

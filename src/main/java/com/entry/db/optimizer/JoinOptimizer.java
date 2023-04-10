@@ -246,20 +246,28 @@ public class JoinOptimizer {
         // some code goes here
         PlanCache planCache = new PlanCache();
         int size = joins.size();
-        List<LogicalJoinNode> plan = null;
+        // key-size, value-bestCostCard
+        Map<Integer, CostCard> bestCostCardMap = new HashMap<>();
         for (int i = 1; i <= size; i++) {
             Set<Set<LogicalJoinNode>> sets = enumerateSubsets2(joins, i);
-            double baseCost = Double.MAX_VALUE;
             for (Set<LogicalJoinNode> subSet : sets) {
+                CostCard bestCostCard = null;
                 for (LogicalJoinNode removeJoin : subSet) {
-                    CostCard costCard = computeCostAndCardOfSubplan(stats, filterSelectivities, removeJoin, subSet, baseCost, planCache);
-                    if (costCard != null) {
-                        plan = costCard.plan;
+                    CostCard costCard = computeCostAndCardOfSubplan(stats, filterSelectivities, removeJoin, subSet, bestCostCard == null ? Double.MAX_VALUE : bestCostCard.cost, planCache);
+                    if (costCard != null && (bestCostCard == null || costCard.cost < bestCostCard.cost)) {
+                        bestCostCard = costCard;
+                    }
+                }
+                if (bestCostCard != null) {
+                    planCache.addPlan(subSet, bestCostCard.cost, bestCostCard.card, bestCostCard.plan);
+                    // update bestCostCardMap
+                    if (bestCostCardMap.get(i) == null || bestCostCard.cost < bestCostCardMap.get(i).cost) {
+                        bestCostCardMap.put(i, bestCostCard);
                     }
                 }
             }
         }
-        return plan;
+        return bestCostCardMap.get(size).plan;
     }
 
     // ===================== Private Methods =================================

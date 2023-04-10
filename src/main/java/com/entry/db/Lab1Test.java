@@ -10,10 +10,11 @@ import com.entry.db.transaction.TransactionId;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
+import java.lang.invoke.VarHandle;
 
 @Slf4j
 public class Lab1Test {
-    public static final String FILE_PATH = "src/resources/some_data_file.dat";
+    public static final String FILE_PATH = Lab1Test.class.getClassLoader().getResource("some_data_file.dat").getPath();
 
     public static void main(String[] argv) {
 

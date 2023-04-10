@@ -25,7 +25,12 @@ public class SimpleDb {
                         return;
                     }
                     File sourceTxtFile = new File(args[1]);
-                    File targetDatFile = new File(args[1].replaceAll(".txt", ".dat"));
+                    if (!sourceTxtFile.exists()) {
+                        // load from resources
+                        String file = SimpleDb.class.getClassLoader().getResource(args[1]).getFile();
+                        sourceTxtFile = new File(file);
+                    }
+                    File targetDatFile = new File(sourceTxtFile.getAbsolutePath().replaceAll(".txt", ".dat"));
                     int numOfAttributes = Integer.parseInt(args[2]);
                     Type[] ts = new Type[numOfAttributes];
                     char fieldSeparator = ',';
