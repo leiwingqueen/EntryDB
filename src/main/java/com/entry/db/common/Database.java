@@ -2,9 +2,11 @@ package com.entry.db.common;
 
 import com.entry.db.storage.BufferPool;
 import com.entry.db.storage.LogFile;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -17,6 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @Threadsafe
  */
+@Slf4j
 public class Database {
     private static final AtomicReference<Database> _instance = new AtomicReference<>(new Database());
     private final Catalog _catalog;

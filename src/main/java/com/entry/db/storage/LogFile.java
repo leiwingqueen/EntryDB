@@ -255,10 +255,10 @@ public class LogFile {
         byte[] pageData = p.getPageData();
         raf.writeInt(pageData.length);
         raf.write(pageData);
-        //        Debug.log ("WROTE PAGE DATA, CLASS = " + pageClassName + ", table = " +  pid.getTableId() + ", page = " + pid.pageno());
+        log.debug("WRITE PAGE DATA, CLASS = {},table = {},page = {}", pageClassName, pid.getTableId(), pid.getPageNumber());
     }
 
-    Page readPageData(RandomAccessFile raf) throws IOException {
+    public static Page readPageData(RandomAccessFile raf) throws IOException {
         PageId pid;
         Page newPage = null;
 
@@ -345,7 +345,7 @@ public class LogFile {
                     Long key = els.next();
                     log.debug("CHECKPOINT TRANSACTION ID:{}", key);
                     raf.writeLong(key);
-                    //Debug.log("WRITING CHECKPOINT TRANSACTION OFFSET: " + tidToFirstLogRecord.get(key));
+                    log.debug("CHECKPOINT TRANSACTION OFFSET:{}", tidToFirstLogRecord.get(key));
                     raf.writeLong(tidToFirstLogRecord.get(key));
                 }
 
@@ -357,7 +357,7 @@ public class LogFile {
                 raf.seek(endCpOffset);
                 raf.writeLong(currentOffset);
                 currentOffset = raf.getFilePointer();
-                //Debug.log("CP OFFSET = " + currentOffset);
+                log.debug("CHECKPOINT OFFSET = {}", currentOffset);
             }
         }
 
@@ -484,30 +484,18 @@ public class LogFile {
                 if (offset == null) {
                     throw new NoSuchElementException("No such transaction");
                 }
-                raf.seek(offset);
-                try {
-                    while (raf.getFilePointer() < raf.length()) {
-                        int type = raf.readInt();
-                        long record_tid = raf.readLong();
-                        if (record_tid != tid.getId()) {
-                            continue;
-                        }
-                        if (type == UPDATE_RECORD) {
-                            Page before = readPageData(raf);
-                            // after page. but we should not use it
-                            readPageData(raf);
-                            PageId pageId = before.getId();
-                            // discard the useless page and rollback the page in dbfile
-                            bufferPool.removePage(pageId);
-                            DbFile dbFile = Database.getCatalog().getDatabaseFile(pageId.getTableId());
-                            // System.out.println("rollback.pageId:" + pageId);
-                            dbFile.writePage(before);
-                        }
-                        raf.readLong();
+                LogRecordIterator iterator = new LogRecordIterator(raf, offset);
+                while (iterator.hasNext()) {
+                    LogRecord logRecord = iterator.next();
+                    if (logRecord.logType == UPDATE_RECORD && logRecord.transactionId == tid.getId()) {
+                        UpdateLogRecord record = (UpdateLogRecord) logRecord;
+                        // discard the useless page and rollback the page in dbfile
+                        PageId pageId = record.getBefore().getId();
+                        bufferPool.removePage(pageId);
+                        DbFile dbFile = Database.getCatalog().getDatabaseFile(pageId.getTableId());
+                        log.debug("rollback.pageId:{}", pageId);
+                        dbFile.writePage(record.getBefore());
                     }
-                } catch (EOFException e) {
-                    //should not reach
-                    e.printStackTrace();
                 }
             }
         }
