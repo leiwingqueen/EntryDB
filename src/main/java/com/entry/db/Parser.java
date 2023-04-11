@@ -313,7 +313,7 @@ public class Parser {
                         lp.getTableAliasToIdMapping(), TableStats.getStatsMap());
                 c = Class.forName("com.entry.db.optimizer.QueryPlanVisualizer");
                 m = c.getMethod(
-                        "printQueryPlanTree", OpIterator.class, System.out.getClass());
+                        "printQueryPlanTree", OpIterator.class, PrintStream.class);
                 m.invoke(c.newInstance(), physicalPlan, System.out);
             } catch (ClassNotFoundException | SecurityException ignored) {
             } catch (NoSuchMethodException | InstantiationException | InvocationTargetException | IllegalAccessException | IllegalArgumentException e) {
