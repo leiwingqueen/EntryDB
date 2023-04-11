@@ -81,10 +81,10 @@ public class LogRecordIterator implements Iterator<LogRecord> {
     @Override
     public LogRecord next() {
         if (!hasNext()) {
-            LogRecord res = nextRecord;
-            nextRecord = null;
-            return res;
+            return null;
         }
-        return nextRecord;
+        LogRecord res = nextRecord;
+        nextRecord = null;
+        return res;
     }
 }
