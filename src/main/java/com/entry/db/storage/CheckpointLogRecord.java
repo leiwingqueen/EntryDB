@@ -15,4 +15,8 @@ public class CheckpointLogRecord extends LogRecord {
     public void addTxOffset(long[] txOffset) {
         this.txOffsets.add(txOffset);
     }
+
+    public List<long[]> getTxOffsets() {
+        return txOffsets;
+    }
 }

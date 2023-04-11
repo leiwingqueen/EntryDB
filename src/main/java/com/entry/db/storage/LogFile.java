@@ -530,59 +530,65 @@ public class LogFile {
                 // find the checkpoint
                 raf.seek(0);
                 long checkpoint = raf.readLong();
-                if (checkpoint >= 0) {
-                    raf.seek(checkpoint);
-                    raf.readInt();
-                    raf.readLong();
-                    int size = raf.readInt();
-                    long startOffset = Integer.MAX_VALUE;
-                    for (int i = 0; i < size; i++) {
-                        raf.readLong();
-                        long offset = raf.readLong();
-                        startOffset = Math.min(startOffset, offset);
+                long logOffset = 8;
+                Map<Long, PageImage> activeTxTable = new HashMap<>();
+                if (checkpoint > 0) {
+                    LogRecordIterator iterator = new LogRecordIterator(raf, checkpoint);
+                    LogRecord logRecord = iterator.next();
+                    if (logRecord == null || logRecord.logType != CHECKPOINT_RECORD) {
+                        log.error("checkpoint record not found");
+                        throw new IOException("checkpoint record not found");
                     }
-                    raf.seek(startOffset);
+                    // update ATT(active transaction table)
+                    CheckpointLogRecord record = (CheckpointLogRecord) logRecord;
+                    long oldestOffset = Long.MAX_VALUE;
+                    for (long[] txOffset : record.getTxOffsets()) {
+                        long tid = txOffset[0];
+                        long offset = txOffset[1];
+                        oldestOffset = Math.min(offset, oldestOffset);
+                        activeTxTable.put(tid, new PageImage());
+                    }
+                    logOffset = oldestOffset;
                 }
-                // key-txId,value-pages that reference to transaction
-                Map<Long, List<Page[]>> pageMap = new HashMap<>();
-                // the transaction which mark committed
-                Map<Long, Boolean> commitTx = new HashMap<>();
-                while (raf.getFilePointer() < raf.length()) {
-                    int type = raf.readInt();
-                    long recordTid = raf.readLong();
-                    if (!pageMap.containsKey(recordTid)) {
-                        pageMap.put(recordTid, new ArrayList<>());
-                        commitTx.put(recordTid, false);
-                    }
-                    switch (type) {
-                        case UPDATE_RECORD:
-                            // skip the before image
-                            Page before = readPageData(raf);
-                            // after page. but we should not use it
-                            Page after = readPageData(raf);
-                            pageMap.get(recordTid).add(new Page[]{before, after});
+                LogRecordIterator iterator = new LogRecordIterator(raf, logOffset);
+                while (iterator.hasNext()) {
+                    LogRecord logRecord = iterator.next();
+                    switch (logRecord.logType) {
+                        case CHECKPOINT_RECORD:
+                            break;
+                        case BEGIN_RECORD:
+                            // only offset after checkpoint is valid
+                            if (logRecord.offset > checkpoint) {
+                                activeTxTable.put(logRecord.transactionId, new PageImage());
+                            }
                             break;
                         case COMMIT_RECORD:
-                            commitTx.put(recordTid, true);
+                            if (logRecord.offset > checkpoint) {
+                                activeTxTable.get(logRecord.transactionId).commit();
+                                activeTxTable.remove(logRecord.transactionId);
+                            }
+                            break;
+                        case ABORT_RECORD:
+                            if (logRecord.offset > checkpoint) {
+                                activeTxTable.get(logRecord.transactionId).abort();
+                                activeTxTable.remove(logRecord.transactionId);
+                            }
+                            break;
+                        case UPDATE_RECORD:
+                            if (activeTxTable.containsKey(logRecord.transactionId)) {
+                                UpdateLogRecord record = (UpdateLogRecord) logRecord;
+                                PageImage pageImage = activeTxTable.get(logRecord.transactionId);
+                                pageImage.putBeforePage(record.getBefore());
+                                pageImage.putAfterPage(record.getAfter());
+                            }
+                            break;
                     }
-                    raf.readLong();
                 }
-                // flush the committed transaction to disk
-                for (Map.Entry<Long, Boolean> entry : commitTx.entrySet()) {
-                    Long txId = entry.getKey();
-                    Boolean committed = entry.getValue();
-                    if (committed) {
-                        for (Page[] page : pageMap.get(txId)) {
-                            Page after = page[1];
-                            DbFile dbFile = Database.getCatalog().getDatabaseFile(after.getId().getTableId());
-                            dbFile.writePage(after);
-                        }
-                    } else {
-                        for (Page[] page : pageMap.get(txId)) {
-                            Page before = page[0];
-                            Database.getBufferPool().removePage(before.getId());
-                            Database.getCatalog().getDatabaseFile(before.getId().getTableId()).writePage(before);
-                        }
+                // abort all active transaction
+                if (activeTxTable.size() > 0) {
+                    for (Map.Entry<Long, PageImage> entry : activeTxTable.entrySet()) {
+                        PageImage pageImage = entry.getValue();
+                        pageImage.abort();
                     }
                 }
             }
@@ -671,4 +677,42 @@ public class LogFile {
         raf.getChannel().force(true);
     }
 
+    class PageImage {
+        Map<PageId, Page> oldestBeforePage;
+        Map<PageId, Page> latestAfterPage;
+
+        public PageImage() {
+            oldestBeforePage = new HashMap<>();
+            latestAfterPage = new HashMap<>();
+        }
+
+        public void putBeforePage(Page before) {
+            PageId pid = before.getId();
+            if (!oldestBeforePage.containsKey(pid)) {
+                oldestBeforePage.put(pid, before);
+            }
+        }
+
+        public void putAfterPage(Page after) {
+            PageId pid = after.getId();
+            latestAfterPage.put(pid, after);
+        }
+
+        public void commit() throws IOException {
+            for (PageId pid : latestAfterPage.keySet()) {
+                Page after = latestAfterPage.get(pid);
+                Database.getBufferPool().removePage(pid);
+                DbFile dbFile = Database.getCatalog().getDatabaseFile(after.getId().getTableId());
+                dbFile.writePage(after);
+            }
+        }
+
+        public void abort() throws IOException {
+            for (PageId pid : oldestBeforePage.keySet()) {
+                Page before = oldestBeforePage.get(pid);
+                Database.getBufferPool().removePage(before.getId());
+                Database.getCatalog().getDatabaseFile(before.getId().getTableId()).writePage(before);
+            }
+        }
+    }
 }
