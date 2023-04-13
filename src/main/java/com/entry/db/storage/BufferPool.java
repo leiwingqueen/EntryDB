@@ -245,7 +245,7 @@ public class BufferPool {
         DbFile dbFile = catalog.getDatabaseFile(tableId);
         // update buffer pool data
         List<Page> pages = dbFile.insertTuple(tid, t);
-        refreshDirtyPages(tid, pages);
+        markDirtyPages(tid, pages);
     }
 
     /**
@@ -270,11 +270,11 @@ public class BufferPool {
         PageId pageId = t.getRecordId().getPageId();
         DbFile dbFile = catalog.getDatabaseFile(pageId.getTableId());
         List<Page> pages = dbFile.deleteTuple(tid, t);
-        refreshDirtyPages(tid, pages);
+        markDirtyPages(tid, pages);
     }
 
     // mark dirty
-    private void refreshDirtyPages(TransactionId tid, List<Page> pages) throws DbException {
+    private void markDirtyPages(TransactionId tid, List<Page> pages) throws DbException {
         for (Page page : pages) {
             page.markDirty(true, tid);
         }
