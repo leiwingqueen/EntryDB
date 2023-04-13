@@ -118,24 +118,28 @@ public class BufferPool {
         Page page;
         if (pageId2FrameIdMap.containsKey(pid)) {
             Integer frameId = pageId2FrameIdMap.get(pid);
-            // update lru map
-            lruUpdate(pid);
             page = pageTable[frameId];
-        } else {
-            if (freeList.size() == 0) {
-                // throw new DbException("not enough space to allocate page");
-                // TODO: what if the pin count case
-                evictPage();
+            // update lru map
+            synchronized (this) {
+                lruUpdate(pid);
             }
-            Integer frameId = freeList.pollFirst();
-            // load data from disk(random access disk)
-            Catalog catalog = Database.getCatalog();
-            DbFile dbFile = catalog.getDatabaseFile(pid.getTableId());
-            page = dbFile.readPage(pid);
-            pageTable[frameId] = page;
-            pageId2FrameIdMap.put(pid, frameId);
-            // update lru cache
-            lruUpdate(pid);
+        } else {
+            synchronized (this) {
+                if (freeList.size() == 0) {
+                    // throw new DbException("not enough space to allocate page");
+                    // TODO: what if the pin count case
+                    evictPage();
+                }
+                Integer frameId = freeList.pollFirst();
+                // load data from disk(random access disk)
+                Catalog catalog = Database.getCatalog();
+                DbFile dbFile = catalog.getDatabaseFile(pid.getTableId());
+                page = dbFile.readPage(pid);
+                pageTable[frameId] = page;
+                pageId2FrameIdMap.put(pid, frameId);
+                // update lru cache
+                lruUpdate(pid);
+            }
         }
         return page;
     }
