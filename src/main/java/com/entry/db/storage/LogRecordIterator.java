@@ -63,7 +63,7 @@ public class LogRecordIterator implements Iterator<LogRecord> {
             case LogFile.CHECKPOINT_RECORD:
                 tid = raf.readLong();
                 int numTx = raf.readInt();
-                CheckpointLogRecord checkpointLogRecord = new CheckpointLogRecord(offset);
+                CheckpointLogRecord checkpointLogRecord = new CheckpointLogRecord(0);
                 for (int i = 0; i < numTx; i++) {
                     long[] txOffset = new long[2];
                     txOffset[0] = raf.readLong();
