@@ -50,6 +50,7 @@ public class BufferPoolWriteTest extends TestUtil.CreateHeapFile {
                 bw.write(emptyData);
                 bw.close();
                 // modify by leiwingqueen 2023-04-13 16:00, we need to load page to bufferpool and modify it
+                // fix for handleManyDirtyPages, if we don't load page to bufferpool, we can't get the page
                 HeapPage p = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(super.getId(), super.numPages() - 1), Permissions.READ_WRITE);
                 /*HeapPage p = new HeapPage(new HeapPageId(super.getId(), super.numPages() - 1),
                         HeapPage.createEmptyPageData());*/
