@@ -244,6 +244,9 @@ public class JoinOptimizer {
         // Not necessary for labs 1 and 2.
 
         // some code goes here
+        if (joins.size() <= 0) {
+            return Collections.emptyList();
+        }
         PlanCache planCache = new PlanCache();
         int size = joins.size();
         // key-size, value-bestCostCard

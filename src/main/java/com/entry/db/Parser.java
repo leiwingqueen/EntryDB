@@ -546,9 +546,9 @@ public class Parser {
                         log.info("Can't parse " + s
                                 + "\n -- parser only handles SQL transactions, insert, delete, and select statements");
                         /**System.out
-                                .println("Can't parse "
-                                        + s
-                                        + "\n -- parser only handles SQL transactions, insert, delete, and select statements");*/
+                         .println("Can't parse "
+                         + s
+                         + "\n -- parser only handles SQL transactions, insert, delete, and select statements");*/
                     }
                     if (query != null)
                         query.execute();
@@ -575,6 +575,7 @@ public class Parser {
                         throw new ParsingException((Exception) a);
                     if (a instanceof Zql.TokenMgrError)
                         throw (Zql.TokenMgrError) a;
+                    log.error(a.getMessage(), a);
                     throw new DbException(a.getMessage());
                 } finally {
                     if (!inUserTrans)
