@@ -1,6 +1,8 @@
 package com.entry.db;
 
-import Zql.*;
+// import Zql.*;
+
+import org.gibello.zql.*;
 
 // replace this with your own package name
 import com.entry.db.common.Database;
@@ -289,7 +291,7 @@ public class Parser {
 
     public Query handleQueryStatement(ZQuery s, TransactionId tId)
             throws IOException,
-            ParsingException, Zql.ParseException {
+            ParsingException, ParseException {
         Query query = new Query(tId);
 
         LogicalPlan lp = parseQueryLogicalPlan(tId, s);
@@ -326,7 +328,7 @@ public class Parser {
 
     public Query handleInsertStatement(ZInsert s, TransactionId tId)
             throws DbException, IOException,
-            ParsingException, Zql.ParseException {
+            ParsingException, ParseException {
         int tableId;
         try {
             tableId = Database.getCatalog().getTableId(s.getTable()); // will
@@ -434,7 +436,8 @@ public class Parser {
     public void handleTransactStatement(ZTransactStmt s)
             throws IOException,
             ParsingException {
-        switch (s.getStmtType()) {
+        // switch (s.getStmtType()) {
+        switch (s.getStatement()) {
             case "COMMIT":
                 if (curtrans == null)
                     throw new ParsingException(
@@ -486,7 +489,7 @@ public class Parser {
             if (stmt instanceof ZQuery) {
                 return parseQueryLogicalPlan(tid, (ZQuery) stmt);
             }
-        } catch (Zql.ParseException e) {
+        } catch (ParseException e) {
             throw new ParsingException(
                     "Invalid SQL expression: \n \t " + e);
         }
@@ -546,9 +549,9 @@ public class Parser {
                         log.info("Can't parse " + s
                                 + "\n -- parser only handles SQL transactions, insert, delete, and select statements");
                         /**System.out
-                                .println("Can't parse "
-                                        + s
-                                        + "\n -- parser only handles SQL transactions, insert, delete, and select statements");*/
+                         .println("Can't parse "
+                         + s
+                         + "\n -- parser only handles SQL transactions, insert, delete, and select statements");*/
                     }
                     if (query != null)
                         query.execute();
@@ -571,10 +574,11 @@ public class Parser {
                     this.inUserTrans = false;
 
                     if (a instanceof ParsingException
-                            || a instanceof Zql.ParseException)
+                            || a instanceof ParseException)
                         throw new ParsingException((Exception) a);
-                    if (a instanceof Zql.TokenMgrError)
-                        throw (Zql.TokenMgrError) a;
+                    if (a instanceof TokenMgrError)
+                        throw (TokenMgrError) a;
+                    log.error(a.getMessage(), a);
                     throw new DbException(a.getMessage());
                 } finally {
                     if (!inUserTrans)

@@ -7,6 +7,7 @@ import com.entry.db.common.Type;
 import com.entry.db.execution.*;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.util.*;
@@ -25,6 +26,7 @@ import java.util.*;
  * {@link JoinOptimizer} to order joins optimally and to select the
  * best implementations for joins.
  */
+@Slf4j
 public class LogicalPlan {
     private List<LogicalJoinNode> joins;
     private final List<LogicalScanNode> tables;
@@ -179,7 +181,7 @@ public class LogicalPlan {
      */
 
     public void addScan(int table, String name) {
-        System.out.println("Added scan of table " + name);
+        log.info("Adding scan of table " + name);
         tables.add(new LogicalScanNode(table, name));
         tableMap.put(name, table);
     }
@@ -196,7 +198,7 @@ public class LogicalPlan {
         fname = disambiguateName(fname);
         if (fname.equals("*"))
             fname = "null.*";
-        System.out.println("Added select list field " + fname);
+        log.info("Added select list field " + fname);
         if (aggOp != null) {
             System.out.println("\t with aggregator " + aggOp);
         }
@@ -243,7 +245,7 @@ public class LogicalPlan {
      * through all of the tables added via {@link #addScan}.
      *
      * @return A fully qualified name of the form tableAlias.name.  If the name parameter is already qualified
-     *         with a table name, simply returns name.
+     * with a table name, simply returns name.
      * @throws ParsingException if the field cannot be found in any of the tables, or if the
      *                          field is ambiguous (appears in multiple tables)
      */
