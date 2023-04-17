@@ -1,6 +1,7 @@
 package com.entry.db.transaction;
 
 import com.entry.db.storage.PageId;
+import com.entry.db.storage.RecordId;
 
 import java.util.Iterator;
 
@@ -8,15 +9,15 @@ import java.util.Iterator;
 // reference https://www.geeksforgeeks.org/implementation-of-locking-in-dbms/
 public interface LockManager {
 
-    void acquire(LockMode lockMode, TransactionId txId, PageId pageId) throws TransactionAbortedException;
+    void acquire(LockMode lockMode, TransactionId txId, RecordId recordId) throws TransactionAbortedException;
 
-    void release(TransactionId txId, PageId pageId);
+    void release(TransactionId txId, RecordId recordId);
 
-    Iterator<PageId> findAllLockPage(TransactionId txId);
+    Iterator<RecordId> findAllLockPage(TransactionId txId);
 
     void releaseAll(TransactionId txId);
 
-    LockMode holdsLock(TransactionId txId, PageId pageId);
+    LockMode holdsLock(TransactionId txId, RecordId recordId);
 
     enum LockMode {
         S_LOCK(0),

@@ -191,7 +191,7 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // release all the log and flush all the dirty page into the disk
-        Iterator<PageId> pageIdIterator = lockManager.findAllLockPage(tid);
+        Iterator<RecordId> pageIdIterator = lockManager.findAllLockPage(tid);
         List<PageId> pageIds = new ArrayList<>();
         while (pageIdIterator.hasNext()) {
             PageId pageId = pageIdIterator.next();
