@@ -1,6 +1,7 @@
 package com.entry.db.storage;
 
 import com.entry.db.common.*;
+import com.entry.db.index.BTreeLatchManager;
 import com.entry.db.transaction.LockManager;
 import com.entry.db.transaction.SimpleLockManager;
 import com.entry.db.transaction.TransactionAbortedException;
@@ -115,6 +116,12 @@ public class BufferPool {
         // acquire lock
         /*LockManager.LockMode lockMode = Permissions.READ_ONLY == perm ? LockManager.LockMode.S_LOCK : LockManager.LockMode.X_LOCK;
         lockManager.acquire(lockMode, tid, pid);*/
+        BTreeLatchManager latchManager = Database.getBTreeLatchManager();
+        if (perm == Permissions.READ_ONLY) {
+            latchManager.acquireReadLatch(pid);
+        } else {
+            latchManager.acquireWriteLatch(pid);
+        }
         Page page;
         if (pageId2FrameIdMap.containsKey(pid)) {
             Integer frameId = pageId2FrameIdMap.get(pid);
@@ -156,7 +163,7 @@ public class BufferPool {
     public void unsafeReleasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
-        lockManager.release(tid, pid);
+        // lockManager.release(tid, pid);
     }
 
     /**
@@ -176,7 +183,8 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return lockManager.holdsLock(tid, p) != null;
+        // return lockManager.holdsLock(tid, p) != null;
+        return false;
     }
 
     /**
@@ -191,10 +199,10 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // release all the log and flush all the dirty page into the disk
-        Iterator<RecordId> pageIdIterator = lockManager.findAllLockPage(tid);
+        Iterator<RecordId> pageIdIterator = lockManager.findAllLocks(tid);
         List<PageId> pageIds = new ArrayList<>();
         while (pageIdIterator.hasNext()) {
-            PageId pageId = pageIdIterator.next();
+            RecordId pageId = pageIdIterator.next();
             if (commit) {
                 // force policy
                 try {

@@ -1,7 +1,10 @@
 package com.entry.db.common;
 
+import com.entry.db.index.BTreeLatchManager;
 import com.entry.db.storage.BufferPool;
 import com.entry.db.storage.LogFile;
+import com.entry.db.transaction.LockManager;
+import com.entry.db.transaction.SimpleLockManager;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -27,6 +30,8 @@ public class Database {
 
     private final static String LOGFILENAME = "work/wal/log";
     private final LogFile _logfile;
+    private BTreeLatchManager _bTreeLatchManager;
+    private LockManager _lockManager;
 
     private Database() {
         _catalog = new Catalog();
@@ -39,6 +44,8 @@ public class Database {
             System.exit(1);
         }
         _logfile = tmp;
+        _bTreeLatchManager = new BTreeLatchManager();
+        _lockManager = new SimpleLockManager();
         // startControllerThread();
     }
 
@@ -63,6 +70,14 @@ public class Database {
         return _instance.get()._catalog;
     }
 
+    public static BTreeLatchManager getBTreeLatchManager() {
+        return _instance.get()._bTreeLatchManager;
+    }
+
+    public static LockManager getLockManager() {
+        return _instance.get()._lockManager;
+    }
+
     /**
      * Method used for testing -- create a new instance of the buffer pool and
      * return it
@@ -76,8 +91,14 @@ public class Database {
         } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException | SecurityException e) {
             e.printStackTrace();
         }
+        resetLogManager();
         //        _instance._bufferpool = new BufferPool(pages);
         return _instance.get()._bufferpool;
+    }
+
+    private static void resetLogManager() {
+        _instance.get()._lockManager = new SimpleLockManager();
+        _instance.get()._bTreeLatchManager = new BTreeLatchManager();
     }
 
     // reset the database, used for unit tests only.

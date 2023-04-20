@@ -4,6 +4,7 @@ import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Debug;
 import com.entry.db.common.Permissions;
+import com.entry.db.index.BTreeLatchManager;
 import com.entry.db.transaction.LockManager;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
@@ -134,6 +135,7 @@ public class HeapFile implements DbFile {
         // we need to scan the hole file to find a page to insert the tuple
         // Debug.log("insert tuple...tid:%s", tid);
         BufferPool bufferPool = Database.getBufferPool();
+        BTreeLatchManager latchManager = Database.getBTreeLatchManager();
         LockManager lockManager = bufferPool.getLockManager();
         // int i = 0;
         HeapPage selectPage = null;
@@ -146,7 +148,8 @@ public class HeapFile implements DbFile {
                 break;
             }
             // no space insert. release the lock immediately
-            lockManager.release(tid, pageId);
+            // lockManager.release(tid, pageId);
+            latchManager.releaseWriteLatch(pageId);
         }
         if (selectPage == null) {
             // need to create a new page

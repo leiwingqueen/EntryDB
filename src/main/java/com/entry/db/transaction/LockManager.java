@@ -12,7 +12,7 @@ public interface LockManager {
 
     void release(TransactionId txId, RecordId recordId);
 
-    Iterator<RecordId> findAllLockPage(TransactionId txId);
+    Iterator<RecordId> findAllLocks(TransactionId txId);
 
     void releaseAll(TransactionId txId);
 

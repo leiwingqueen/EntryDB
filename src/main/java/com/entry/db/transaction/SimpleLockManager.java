@@ -142,7 +142,7 @@ public class SimpleLockManager implements LockManager {
     }
 
     @Override
-    public Iterator<RecordId> findAllLockPage(TransactionId txId) {
+    public Iterator<RecordId> findAllLocks(TransactionId txId) {
         _latch.readLock().lock();
         try {
             if (!_holdingTable.containsKey(txId)) {
