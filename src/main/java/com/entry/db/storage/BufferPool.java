@@ -113,8 +113,8 @@ public class BufferPool {
             throws TransactionAbortedException, DbException {
         // some code goes here
         // acquire lock
-        LockManager.LockMode lockMode = Permissions.READ_ONLY == perm ? LockManager.LockMode.S_LOCK : LockManager.LockMode.X_LOCK;
-        lockManager.acquire(lockMode, tid, pid);
+        /*LockManager.LockMode lockMode = Permissions.READ_ONLY == perm ? LockManager.LockMode.S_LOCK : LockManager.LockMode.X_LOCK;
+        lockManager.acquire(lockMode, tid, pid);*/
         Page page;
         if (pageId2FrameIdMap.containsKey(pid)) {
             Integer frameId = pageId2FrameIdMap.get(pid);

@@ -35,6 +35,7 @@ public class BTreeFile implements DbFile {
     private final TupleDesc td;
     private final int tableid;
     private final int keyField;
+    private BTreeLatchManager latchManager;
 
     /**
      * Constructs a B+ tree file backed by the specified file.
@@ -49,6 +50,7 @@ public class BTreeFile implements DbFile {
         this.tableid = f.getAbsoluteFile().hashCode();
         this.keyField = key;
         this.td = td;
+        this.latchManager = new BTreeLatchManager();
     }
 
     /**
@@ -197,9 +199,10 @@ public class BTreeFile implements DbFile {
         if (pid.pgcateg() == BTreePageId.LEAF) {
             BTreeLeafPage leafPage = (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
             if (perm == Permissions.READ_ONLY) {
-                if (parentStack.size() > 0) {
+                while (parentStack.size() > 0) {
                     BTreePageId parent = parentStack.pop();
-                    lockManager.release(tid, parent);
+                    // lockManager.release(tid, parent);
+                    latchManager.releaseReadLatch(parent);
                 }
             } else {
                 // Release lock for parent if “safe” A safe node is one that will not
@@ -207,18 +210,24 @@ public class BTreeFile implements DbFile {
                 if (leafPage.getNumTuples() < leafPage.getMaxTuples() && leafPage.getNumTuples() > leafPage.getMaxTuples() / 2) {
                     while (parentStack.size() > 0) {
                         BTreePageId parent = parentStack.pop();
-                        lockManager.release(tid, parent);
+                        // lockManager.release(tid, parent);
+                        latchManager.releaseWriteLatch(parent);
                     }
                 }
             }
             return leafPage;
         }
         // internal page
+        if (perm == Permissions.READ_ONLY) {
+            latchManager.acquireReadLatch(pid);
+        } else {
+            latchManager.acquireWriteLatch(pid);
+        }
         BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
         Iterator<BTreeEntry> iterator = internalPage.iterator();
         if (!iterator.hasNext()) {
             // will not happen
-            lockManager.release(tid, pid);
+            // lockManager.release(tid, pid);
             return null;
         }
         BTreePageId childPage = null;
@@ -240,18 +249,18 @@ public class BTreeFile implements DbFile {
         }
         // add parent page to stack
         if (perm == Permissions.READ_ONLY) {
-            if (parentStack.size() > 0) {
+            while (parentStack.size() > 0) {
                 BTreePageId parent = parentStack.pop();
-                lockManager.release(tid, parent);
-            } else {
-                // check current page is safe?
-                // Release lock for parent if “safe” A safe node is one that will not
-                // split or merge when updated (not full on insertion or more than half full on deletion
-                if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
-                    while (parentStack.size() > 0) {
-                        BTreePageId parent = parentStack.pop();
-                        lockManager.release(tid, parent);
-                    }
+                latchManager.releaseReadLatch(parent);
+            }
+        } else {
+            // check current page is safe?
+            // Release lock for parent if “safe” A safe node is one that will not
+            // split or merge when updated (not full on insertion or more than half full on deletion
+            if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
+                while (parentStack.size() > 0) {
+                    BTreePageId parent = parentStack.pop();
+                    latchManager.releaseWriteLatch(parent);
                 }
             }
         }
@@ -567,6 +576,9 @@ public class BTreeFile implements DbFile {
         }
 
         // insert the tuple into the leaf page
+        // lock the tuple
+        LockManager lockManager = Database.getBufferPool().getLockManager();
+        lockManager.acquire(LockManager.LockMode.X_LOCK, tid, t.getRecordId());
         leafPage.insertTuple(t);
 
         return new ArrayList<>(dirtypages.values());

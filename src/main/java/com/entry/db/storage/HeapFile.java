@@ -171,6 +171,8 @@ public class HeapFile implements DbFile {
         BufferPool bufferPool = Database.getBufferPool();
         PageId pageId = t.getRecordId().getPageId();
         HeapPage page = (HeapPage) bufferPool.getPage(tid, pageId, Permissions.READ_WRITE);
+        LockManager lockManager = Database.getBufferPool().getLockManager();
+        lockManager.acquire(LockManager.LockMode.X_LOCK, tid, t.getRecordId());
         page.deleteTuple(t);
         return Arrays.asList(page);
         // not necessary for lab1
