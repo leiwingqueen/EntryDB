@@ -197,7 +197,7 @@ public class BTreeFile implements DbFile {
         if (pid.pgcateg() == BTreePageId.LEAF) {
             BTreeLeafPage leafPage = (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
             if (perm == Permissions.READ_ONLY) {
-                if (parentStack.size() > 0) {
+                while (parentStack.size() > 0) {
                     BTreePageId parent = parentStack.pop();
                     lockManager.release(tid, parent);
                 }
@@ -240,18 +240,18 @@ public class BTreeFile implements DbFile {
         }
         // add parent page to stack
         if (perm == Permissions.READ_ONLY) {
-            if (parentStack.size() > 0) {
+            while (parentStack.size() > 0) {
                 BTreePageId parent = parentStack.pop();
                 lockManager.release(tid, parent);
-            } else {
-                // check current page is safe?
-                // Release lock for parent if “safe” A safe node is one that will not
-                // split or merge when updated (not full on insertion or more than half full on deletion
-                if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
-                    while (parentStack.size() > 0) {
-                        BTreePageId parent = parentStack.pop();
-                        lockManager.release(tid, parent);
-                    }
+            }
+        } else {
+            // check current page is safe?
+            // Release lock for parent if “safe” A safe node is one that will not
+            // split or merge when updated (not full on insertion or more than half full on deletion
+            if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
+                while (parentStack.size() > 0) {
+                    BTreePageId parent = parentStack.pop();
+                    lockManager.release(tid, parent);
                 }
             }
         }
