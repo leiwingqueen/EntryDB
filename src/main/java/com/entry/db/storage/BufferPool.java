@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -53,6 +54,7 @@ public class BufferPool {
     private LruNode head;
     private LruNode tail;
     // private int pageSize = DEFAULT_PAGE_SIZE;
+    private ReentrantReadWriteLock latch;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -75,6 +77,7 @@ public class BufferPool {
         head.next = tail;
         tail.pre = head;
         lockManager = new SimpleLockManager();
+        latch = new ReentrantReadWriteLock();
     }
 
     public static int getPageSize() {
@@ -116,15 +119,14 @@ public class BufferPool {
         LockManager.LockMode lockMode = Permissions.READ_ONLY == perm ? LockManager.LockMode.S_LOCK : LockManager.LockMode.X_LOCK;
         lockManager.acquire(lockMode, tid, pid);
         Page page;
-        if (pageId2FrameIdMap.containsKey(pid)) {
-            Integer frameId = pageId2FrameIdMap.get(pid);
-            page = pageTable[frameId];
-            // update lru map
-            synchronized (this) {
+        latch.writeLock().lock();
+        try {
+            if (pageId2FrameIdMap.containsKey(pid)) {
+                Integer frameId = pageId2FrameIdMap.get(pid);
+                page = pageTable[frameId];
+                // update lru map
                 lruUpdate(pid);
-            }
-        } else {
-            synchronized (this) {
+            } else {
                 if (freeList.size() == 0) {
                     // throw new DbException("not enough space to allocate page");
                     // TODO: what if the pin count case
@@ -140,6 +142,8 @@ public class BufferPool {
                 // update lru cache
                 lruUpdate(pid);
             }
+        } finally {
+            latch.writeLock().unlock();
         }
         return page;
     }
@@ -191,37 +195,42 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1|lab2
         // release all the log and flush all the dirty page into the disk
-        Iterator<PageId> pageIdIterator = lockManager.findAllLockPage(tid);
+        latch.writeLock().lock();
         List<PageId> pageIds = new ArrayList<>();
-        while (pageIdIterator.hasNext()) {
-            PageId pageId = pageIdIterator.next();
-            if (commit) {
-                // force policy
-                try {
-                    flushPage(pageId);
-                    // use current page to replace the before image
-                    Page page = getPage(tid, pageId, Permissions.READ_ONLY);
-                    page.setBeforeImage();
-                } catch (IOException | DbException | TransactionAbortedException e) {
-                    e.printStackTrace();
-                    // TODO: should we need to throw an exception?
-                }
-            } else {
-                if (pageId2FrameIdMap.containsKey(pageId)) {
-                    Integer frameId = pageId2FrameIdMap.get(pageId);
-                    Page page = pageTable[frameId];
-                    if (page.isDirty() != null) {
-                        log.debug("page rollback...tid:{},pageId:{}", tid, page.getId());
-                        pageTable[frameId] = page.getBeforeImage();
+        try {
+            Iterator<PageId> pageIdIterator = lockManager.findAllLockPage(tid);
+            while (pageIdIterator.hasNext()) {
+                PageId pageId = pageIdIterator.next();
+                if (commit) {
+                    // force policy
+                    try {
+                        flushPage(pageId);
+                        // use current page to replace the before image
+                        Page page = getPage(tid, pageId, Permissions.READ_ONLY);
+                        page.setBeforeImage();
+                    } catch (IOException | DbException | TransactionAbortedException e) {
+                        log.error(e.getMessage(), e);
+                        // TODO: should we need to throw an exception?
                     }
                 } else {
-                    // no dirty page can swap out from memory. in this case, we should do nothing
+                    if (pageId2FrameIdMap.containsKey(pageId)) {
+                        Integer frameId = pageId2FrameIdMap.get(pageId);
+                        Page page = pageTable[frameId];
+                        if (page.isDirty() != null) {
+                            log.debug("page rollback...tid:{},pageId:{}", tid, page.getId());
+                            pageTable[frameId] = page.getBeforeImage();
+                        }
+                    } else {
+                        // no dirty page can swap out from memory. in this case, we should do nothing
+                    }
                 }
+                pageIds.add(pageId);
             }
-            pageIds.add(pageId);
-        }
-        for (PageId pageId : pageIds) {
-            lockManager.release(tid, pageId);
+            for (PageId pageId : pageIds) {
+                lockManager.release(tid, pageId);
+            }
+        } finally {
+            latch.writeLock().unlock();
         }
     }
 
@@ -289,12 +298,14 @@ public class BufferPool {
      * NB: Be careful using this routine -- it writes dirty data to disk so will
      * break simpledb if running in NO STEAL mode.
      */
-    public synchronized void flushAllPages() throws IOException {
+    public void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
+        latch.writeLock().lock();
         for (PageId pageId : pageId2FrameIdMap.keySet()) {
             flushPage(pageId);
         }
+        latch.writeLock().unlock();
     }
 
     /**
@@ -306,16 +317,21 @@ public class BufferPool {
      * Also used by B+ tree files to ensure that deleted pages
      * are removed from the cache so they can be reused safely
      */
-    public synchronized void removePage(PageId pid) {
+    public void removePage(PageId pid) {
         // some code goes here
         // not necessary for lab1
-        if (!pageId2FrameIdMap.containsKey(pid)) {
-            return;
+        latch.writeLock().lock();
+        try {
+            if (!pageId2FrameIdMap.containsKey(pid)) {
+                return;
+            }
+            Integer frameId = pageId2FrameIdMap.get(pid);
+            pageId2FrameIdMap.remove(pid);
+            freeList.add(frameId);
+            lruRemove(pid);
+        } finally {
+            latch.writeLock().unlock();
         }
-        Integer frameId = pageId2FrameIdMap.get(pid);
-        pageId2FrameIdMap.remove(pid);
-        freeList.add(frameId);
-        lruRemove(pid);
     }
 
     /**
@@ -323,32 +339,37 @@ public class BufferPool {
      *
      * @param pid an ID indicating the page to flush
      */
-    private synchronized void flushPage(PageId pid) throws IOException {
+    private void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-        if (!pageId2FrameIdMap.containsKey(pid)) {
-            return;
-        }
-        Integer frameId = pageId2FrameIdMap.get(pid);
-        DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
-        Page page = pageTable[frameId];
-        if (page.isDirty() != null) {
-            // append an update record to the log, with
-            // a before-image and after-image.
-            // redo log
-            LogFile logFile = Database.getLogFile();
-            logFile.logWrite(page.isDirty(), page.getBeforeImage(), page);
-            logFile.force();
-            // TODO: no force strategy. shall we need to remove the code following?
-            page.markDirty(false, null);
-            dbFile.writePage(page);
+        latch.writeLock().lock();
+        try {
+            if (!pageId2FrameIdMap.containsKey(pid)) {
+                return;
+            }
+            Integer frameId = pageId2FrameIdMap.get(pid);
+            DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+            Page page = pageTable[frameId];
+            if (page.isDirty() != null) {
+                // append an update record to the log, with
+                // a before-image and after-image.
+                // redo log
+                LogFile logFile = Database.getLogFile();
+                logFile.logWrite(page.isDirty(), page.getBeforeImage(), page);
+                logFile.force();
+                // TODO: no force strategy. shall we need to remove the code following?
+                page.markDirty(false, null);
+                dbFile.writePage(page);
+            }
+        } finally {
+            latch.writeLock().unlock();
         }
     }
 
     /**
      * Write all pages of the specified transaction to disk.
      */
-    public synchronized void flushPages(TransactionId tid) throws IOException {
+    public void flushPages(TransactionId tid) throws IOException {
         // TODO: some code goes here
         // not necessary for lab1|lab2
     }
@@ -361,7 +382,7 @@ public class BufferPool {
      * Discards a page from the  pool.
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
-    private synchronized void evictPage() throws DbException {
+    private void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
         if (head.next == tail) {
