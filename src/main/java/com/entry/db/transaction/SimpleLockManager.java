@@ -2,6 +2,7 @@ package com.entry.db.transaction;
 
 import com.entry.db.storage.PageId;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,11 +33,12 @@ public class SimpleLockManager implements LockManager {
             log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
             return;
         }
-        log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
-        LockNode lockNode = new LockNode(lockMode, txId);
         _latch.writeLock().lock();
+        LockNode lockNode = new LockNode(lockMode, txId);
+        LockData lockData = _lockTable.get(pageId);
+        log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{},page lockData:{}", lockMode, txId, pageId, Thread.currentThread(), lockData);
         try {
-            LockData lockData = _lockTable.get(pageId);
+            // LockData lockData = _lockTable.get(pageId);
             // deadlock detect
             for (TransactionId holdTxId : lockData.holding.keySet()) {
                 // case: tx1 and tx2 both hold the share lock, and tx1 is waiting for the exclusive lock
@@ -235,6 +237,19 @@ public class SimpleLockManager implements LockManager {
             holding = new HashMap<>();
             waiting = new LinkedList<>();
         }
+
+        @Override
+        public String toString() {
+            List<String> holdingList = new ArrayList<>();
+            for (Map.Entry<TransactionId, LockMode> entry : holding.entrySet()) {
+                holdingList.add(entry.getKey() + ":" + entry.getValue());
+            }
+            return "LockData{" +
+                    "lockMode=" + lockMode +
+                    ", holding=" + StringUtils.join(holdingList, ",") +
+                    // ", waiting=" + waiting +
+                    '}';
+        }
     }
 
     private static class LockNode {
@@ -244,6 +259,14 @@ public class SimpleLockManager implements LockManager {
         public LockNode(LockManager.LockMode lockMode, TransactionId txId) {
             this.lockMode = lockMode;
             this.txId = txId;
+        }
+
+        @Override
+        public String toString() {
+            return "LockNode{" +
+                    "lockMode=" + lockMode +
+                    ", txId=" + txId +
+                    '}';
         }
     }
 }
