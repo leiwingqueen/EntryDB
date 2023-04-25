@@ -2,8 +2,11 @@ package com.entry.db.transaction;
 
 import com.entry.db.storage.PageId;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // reference https://www.geeksforgeeks.org/implementation-of-locking-in-dbms/
 // 《database system concepts》chapter figure 18.10
@@ -15,22 +18,29 @@ public class SimpleLockManager implements LockManager {
     // deadlock detect
     private TxWaitForGraph _txWaitForGraph;
 
+    private ReentrantReadWriteLock _latch;
+
     public SimpleLockManager() {
-        _lockTable = new HashMap<>();
-        _holdingTable = new HashMap<>();
+        _lockTable = new ConcurrentHashMap<>();
+        _holdingTable = new ConcurrentHashMap<>();
         _txWaitForGraph = new TxWaitForGraphImpl();
+        _latch = new ReentrantReadWriteLock();
     }
 
     @Override
     public void acquire(LockManager.LockMode lockMode, TransactionId txId, PageId pageId) throws TransactionAbortedException {
-        if (tryAcquire(lockMode, txId, pageId)) {
-            log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
-            return;
-        }
-        log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
-        LockNode lockNode = new LockNode(lockMode, txId);
-        synchronized (this) {
+        _latch.writeLock().lock();
+        LockNode lockNode;
+        try {
+            if (txId == null || tryAcquire(lockMode, txId, pageId)) {
+                log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
+                return;
+            }
+            lockNode = new LockNode(lockMode, txId);
             LockData lockData = _lockTable.get(pageId);
+            log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{},page lockData:{}", lockMode, txId, pageId, Thread.currentThread(), lockData);
+            // try {
+            // LockData lockData = _lockTable.get(pageId);
             // deadlock detect
             for (TransactionId holdTxId : lockData.holding.keySet()) {
                 // case: tx1 and tx2 both hold the share lock, and tx1 is waiting for the exclusive lock
@@ -47,6 +57,8 @@ public class SimpleLockManager implements LockManager {
             }
             // add to waiting list
             lockData.waiting.add(lockNode);
+        } finally {
+            _latch.writeLock().unlock();
         }
         // wait
         while (true) {
@@ -67,15 +79,13 @@ public class SimpleLockManager implements LockManager {
     @Override
     public void release(TransactionId txId, PageId pageId) {
         log.debug("lock release...txId:{},pageId:{},thread:{}", txId, pageId, Thread.currentThread());
-        LockData lockData;
-        synchronized (this) {
-            lockData = _lockTable.get(pageId);
+        _latch.writeLock().lock();
+        try {
+            LockData lockData = _lockTable.get(pageId);
             if (lockData == null) {
                 return;
             }
-        }
-        // case: txId is in waiting list, remove it from waiting list
-        synchronized (this) {
+            // case: txId is in waiting list, remove it from waiting list
             if (lockData.waiting.remove(txId)) {
                 log.debug("remove from waiting list...txId:{},pageId:{}", txId, pageId);
                 for (TransactionId holdTxId : lockData.holding.keySet()) {
@@ -120,6 +130,8 @@ public class SimpleLockManager implements LockManager {
                     node.notify();
                 }
             }
+        } finally {
+            _latch.writeLock().unlock();
         }
     }
 
@@ -134,44 +146,56 @@ public class SimpleLockManager implements LockManager {
     }
 
     @Override
-    public synchronized void releaseAll(TransactionId txId) {
-        if (_holdingTable.containsKey(txId)) {
-            Set<PageId> rmPages = new HashSet<>();
-            for (PageId pageId : _holdingTable.get(txId)) {
-                rmPages.add(pageId);
+    public void releaseAll(TransactionId txId) {
+        _latch.writeLock().lock();
+        try {
+            if (_holdingTable.containsKey(txId)) {
+                Set<PageId> rmPages = new HashSet<>();
+                for (PageId pageId : _holdingTable.get(txId)) {
+                    rmPages.add(pageId);
+                }
+                for (PageId pageId : rmPages) {
+                    release(txId, pageId);
+                }
             }
-            for (PageId pageId : rmPages) {
-                release(txId, pageId);
-            }
+        } finally {
+            _latch.writeLock().unlock();
         }
     }
 
     @Override
     public LockMode holdsLock(TransactionId txId, PageId pageId) {
-        if (!_lockTable.containsKey(pageId)) {
-            return null;
+        _latch.readLock().lock();
+        try {
+            if (!_lockTable.containsKey(pageId)) {
+                return null;
+            }
+            return _lockTable.get(pageId).holding.get(txId);
+        } finally {
+            _latch.readLock().unlock();
         }
-        return _lockTable.get(pageId).holding.get(txId);
     }
 
     public boolean tryAcquire(LockManager.LockMode lockMode, TransactionId txId, PageId pageId) {
         // init lock table and holding table
         if (!_lockTable.containsKey(pageId)) {
-            synchronized (this) {
-                if (!_lockTable.containsKey(pageId)) {
-                    _lockTable.put(pageId, new LockData());
-                }
+            _latch.writeLock().lock();
+            if (!_lockTable.containsKey(pageId)) {
+                _lockTable.put(pageId, new LockData());
             }
+            _latch.writeLock().unlock();
         }
         if (!_holdingTable.containsKey(txId)) {
-            synchronized (this) {
-                if (!_holdingTable.containsKey(txId)) {
-                    _holdingTable.put(txId, new HashSet<>());
-                }
+            _latch.writeLock().lock();
+            if (!_holdingTable.containsKey(txId)) {
+                _holdingTable.put(txId, new HashSet<>());
             }
+            _latch.writeLock().unlock();
         }
-        LockData lockData = _lockTable.get(pageId);
-        synchronized (this) {
+        _latch.writeLock().lock();
+        try {
+            LockData lockData = _lockTable.get(pageId);
+            // synchronized (this) {
             if (lockData.holding.containsKey(txId)) {
                 // already hold the lock
                 LockMode mode = lockData.holding.get(txId);
@@ -199,6 +223,9 @@ public class SimpleLockManager implements LockManager {
                 }
             }
             return false;
+            //}
+        } finally {
+            _latch.writeLock().unlock();
         }
     }
 
@@ -212,6 +239,31 @@ public class SimpleLockManager implements LockManager {
             holding = new HashMap<>();
             waiting = new LinkedList<>();
         }
+
+        @Override
+        public String toString() {
+            List<String> holdingList = new ArrayList<>();
+            for (Map.Entry<TransactionId, LockMode> entry : holding.entrySet()) {
+                holdingList.add(entry.getKey() + ":" + entry.getValue());
+            }
+            Map<LockMode, Integer> waitMap = new HashMap<>();
+            for (LockNode lockNode : waiting) {
+                waitMap.put(lockNode.lockMode, waitMap.getOrDefault(lockNode.lockMode, 0) + 1);
+            }
+            List<TransactionId> xLockWaitList = new ArrayList<>();
+            for (LockNode lockNode : waiting) {
+                if (lockNode.lockMode == LockMode.X_LOCK) {
+                    xLockWaitList.add(lockNode.txId);
+                }
+            }
+            return "LockData{" +
+                    "lockMode=" + lockMode +
+                    ", holding=" + StringUtils.join(holdingList, ",") +
+                    ", S-LOCK waiting=" + waitMap.getOrDefault(LockMode.S_LOCK, 0) +
+                    ", X-LOCK waiting=" + waitMap.getOrDefault(LockMode.X_LOCK, 0) +
+                    ",X-LOCK waiting detail=" + StringUtils.join(xLockWaitList, ",") +
+                    '}';
+        }
     }
 
     private static class LockNode {
@@ -221,6 +273,14 @@ public class SimpleLockManager implements LockManager {
         public LockNode(LockManager.LockMode lockMode, TransactionId txId) {
             this.lockMode = lockMode;
             this.txId = txId;
+        }
+
+        @Override
+        public String toString() {
+            return "LockNode{" +
+                    "lockMode=" + lockMode +
+                    ", txId=" + txId +
+                    '}';
         }
     }
 }
