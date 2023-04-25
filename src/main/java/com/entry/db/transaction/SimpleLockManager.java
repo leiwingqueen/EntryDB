@@ -29,15 +29,17 @@ public class SimpleLockManager implements LockManager {
 
     @Override
     public void acquire(LockManager.LockMode lockMode, TransactionId txId, PageId pageId) throws TransactionAbortedException {
-        if (txId == null || tryAcquire(lockMode, txId, pageId)) {
-            log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
-            return;
-        }
         _latch.writeLock().lock();
-        LockNode lockNode = new LockNode(lockMode, txId);
-        LockData lockData = _lockTable.get(pageId);
-        log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{},page lockData:{}", lockMode, txId, pageId, Thread.currentThread(), lockData);
+        LockNode lockNode;
         try {
+            if (txId == null || tryAcquire(lockMode, txId, pageId)) {
+                log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", lockMode, txId, pageId, Thread.currentThread());
+                return;
+            }
+            lockNode = new LockNode(lockMode, txId);
+            LockData lockData = _lockTable.get(pageId);
+            log.debug("get lock fail...mode:{},txId:{},pageId:{},thread:{},page lockData:{}", lockMode, txId, pageId, Thread.currentThread(), lockData);
+            // try {
             // LockData lockData = _lockTable.get(pageId);
             // deadlock detect
             for (TransactionId holdTxId : lockData.holding.keySet()) {
@@ -77,13 +79,13 @@ public class SimpleLockManager implements LockManager {
     @Override
     public void release(TransactionId txId, PageId pageId) {
         log.debug("lock release...txId:{},pageId:{},thread:{}", txId, pageId, Thread.currentThread());
-        LockData lockData = _lockTable.get(pageId);
-        if (lockData == null) {
-            return;
-        }
-        // case: txId is in waiting list, remove it from waiting list
         _latch.writeLock().lock();
         try {
+            LockData lockData = _lockTable.get(pageId);
+            if (lockData == null) {
+                return;
+            }
+            // case: txId is in waiting list, remove it from waiting list
             if (lockData.waiting.remove(txId)) {
                 log.debug("remove from waiting list...txId:{},pageId:{}", txId, pageId);
                 for (TransactionId holdTxId : lockData.holding.keySet()) {
@@ -244,10 +246,22 @@ public class SimpleLockManager implements LockManager {
             for (Map.Entry<TransactionId, LockMode> entry : holding.entrySet()) {
                 holdingList.add(entry.getKey() + ":" + entry.getValue());
             }
+            Map<LockMode, Integer> waitMap = new HashMap<>();
+            for (LockNode lockNode : waiting) {
+                waitMap.put(lockNode.lockMode, waitMap.getOrDefault(lockNode.lockMode, 0) + 1);
+            }
+            List<TransactionId> xLockWaitList = new ArrayList<>();
+            for (LockNode lockNode : waiting) {
+                if (lockNode.lockMode == LockMode.X_LOCK) {
+                    xLockWaitList.add(lockNode.txId);
+                }
+            }
             return "LockData{" +
                     "lockMode=" + lockMode +
                     ", holding=" + StringUtils.join(holdingList, ",") +
-                    // ", waiting=" + waiting +
+                    ", S-LOCK waiting=" + waitMap.getOrDefault(LockMode.S_LOCK, 0) +
+                    ", X-LOCK waiting=" + waitMap.getOrDefault(LockMode.X_LOCK, 0) +
+                    ",X-LOCK waiting detail=" + StringUtils.join(xLockWaitList, ",") +
                     '}';
         }
     }

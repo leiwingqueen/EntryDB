@@ -16,9 +16,6 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>work/log/db.%d{yyyy-MM-dd}.log</fileNamePattern>
         </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <MaxFileSize>1MB</MaxFileSize>
-        </triggeringPolicy>
     </appender>
 
 
