@@ -16,15 +16,21 @@ public class SimpleLockManager implements LockManager {
     // use to find all the page which transaction holds
     private Map<TransactionId, Set<PageId>> _holdingTable;
     // deadlock detect
-    private TxWaitForGraph _txWaitForGraph;
+    // private TxWaitForGraph _txWaitForGraph;
 
     private ReentrantReadWriteLock _latch;
+
+    // use for build wait for graph
+    private Map<TransactionId, PageId> _waitForResource;
+    private TxWaitForGraphV2 _txWaitForGraphV2;
 
     public SimpleLockManager() {
         _lockTable = new ConcurrentHashMap<>();
         _holdingTable = new ConcurrentHashMap<>();
-        _txWaitForGraph = new TxWaitForGraphImpl();
+        // _txWaitForGraph = new TxWaitForGraphImpl();
         _latch = new ReentrantReadWriteLock();
+        _waitForResource = new ConcurrentHashMap<>();
+        _txWaitForGraphV2 = new TxWaitForGraphV2();
     }
 
     @Override
@@ -42,7 +48,12 @@ public class SimpleLockManager implements LockManager {
             // try {
             // LockData lockData = _lockTable.get(pageId);
             // deadlock detect
-            for (TransactionId holdTxId : lockData.holding.keySet()) {
+            _waitForResource.put(txId, pageId);
+            if (_txWaitForGraphV2.containsCircle(_lockTable, _waitForResource, txId)) {
+                log.debug("dead lock found,throw TxAbortException");
+                throw new TransactionAbortedException();
+            }
+            /*for (TransactionId holdTxId : lockData.holding.keySet()) {
                 // case: tx1 and tx2 both hold the share lock, and tx1 is waiting for the exclusive lock
                 if (holdTxId.equals(txId)) {
                     continue;
@@ -54,7 +65,7 @@ public class SimpleLockManager implements LockManager {
                     }
                     throw new TransactionAbortedException();
                 }
-            }
+            }*/
             // add to waiting list
             lockData.waiting.add(lockNode);
         } finally {
@@ -226,61 +237,6 @@ public class SimpleLockManager implements LockManager {
             //}
         } finally {
             _latch.writeLock().unlock();
-        }
-    }
-
-    private static class LockData {
-        LockMode lockMode;
-        Map<TransactionId, LockMode> holding;
-        Deque<LockNode> waiting;
-
-        public LockData() {
-            this.lockMode = null;
-            holding = new HashMap<>();
-            waiting = new LinkedList<>();
-        }
-
-        @Override
-        public String toString() {
-            List<String> holdingList = new ArrayList<>();
-            for (Map.Entry<TransactionId, LockMode> entry : holding.entrySet()) {
-                holdingList.add(entry.getKey() + ":" + entry.getValue());
-            }
-            Map<LockMode, Integer> waitMap = new HashMap<>();
-            for (LockNode lockNode : waiting) {
-                waitMap.put(lockNode.lockMode, waitMap.getOrDefault(lockNode.lockMode, 0) + 1);
-            }
-            List<TransactionId> xLockWaitList = new ArrayList<>();
-            for (LockNode lockNode : waiting) {
-                if (lockNode.lockMode == LockMode.X_LOCK) {
-                    xLockWaitList.add(lockNode.txId);
-                }
-            }
-            return "LockData{" +
-                    "lockMode=" + lockMode +
-                    ", holding=" + StringUtils.join(holdingList, ",") +
-                    ", S-LOCK waiting=" + waitMap.getOrDefault(LockMode.S_LOCK, 0) +
-                    ", X-LOCK waiting=" + waitMap.getOrDefault(LockMode.X_LOCK, 0) +
-                    ",X-LOCK waiting detail=" + StringUtils.join(xLockWaitList, ",") +
-                    '}';
-        }
-    }
-
-    private static class LockNode {
-        LockManager.LockMode lockMode;
-        TransactionId txId;
-
-        public LockNode(LockManager.LockMode lockMode, TransactionId txId) {
-            this.lockMode = lockMode;
-            this.txId = txId;
-        }
-
-        @Override
-        public String toString() {
-            return "LockNode{" +
-                    "lockMode=" + lockMode +
-                    ", txId=" + txId +
-                    '}';
         }
     }
 }
