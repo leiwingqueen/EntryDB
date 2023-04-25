@@ -82,19 +82,16 @@ public class BufferPool {
 
     public static int getPageSize() {
         return pageSize;
-        // return Database.getBufferPool().pageSize;
     }
 
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void setPageSize(int pageSize) {
         BufferPool.pageSize = pageSize;
-        // Database.getBufferPool().pageSize = pageSize;
     }
 
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void resetPageSize() {
         BufferPool.pageSize = DEFAULT_PAGE_SIZE;
-        // Database.getBufferPool().pageSize = DEFAULT_PAGE_SIZE;
     }
 
     /**
