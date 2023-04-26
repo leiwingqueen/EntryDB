@@ -126,7 +126,6 @@ public class BufferPool {
             } else {
                 if (freeList.size() == 0) {
                     // throw new DbException("not enough space to allocate page");
-                    // TODO: what if the pin count case
                     evictPage();
                 }
                 Integer frameId = freeList.pollFirst();
@@ -397,22 +396,20 @@ public class BufferPool {
             node = node.next;
         }
         if (pageEvict == null) {
-            throw new DbException("no page to evict");
+            // implement the steal strategy
+            Integer frameId = pageId2FrameIdMap.get(head.next.pageId);
+            pageEvict = pageTable[frameId];
+            try {
+                flushPage(pageEvict.getId());
+            } catch (IOException e) {
+                log.error(e.getMessage(), e);
+                throw new DbException("flush page error");
+            }
+            //throw new DbException("no page to evict");
         }
         log.debug("evict page...page:{}", pageEvict.getId());
         // lru cache update
         lruRemove(pageEvict.getId());
-        // Integer frameId = pageId2FrameIdMap.get(node.pageId);
-        // flush dirty page
-        /*Page page = pageTable[frameId];
-        if (page.isDirty() != null) {
-            try {
-                flushPage(node.pageId);
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new DbException("flush page error");
-            }
-        }*/
         Integer frameId = pageId2FrameIdMap.get(pageEvict.getId());
         pageId2FrameIdMap.remove(pageEvict.getId());
         freeList.add(frameId);

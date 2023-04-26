@@ -218,6 +218,7 @@ public class BTreeFile implements DbFile {
         Iterator<BTreeEntry> iterator = internalPage.iterator();
         if (!iterator.hasNext()) {
             // will not happen
+            log.error("BTreeFile.findLeafPage: empty internal page...internal pageId:{}", pid);
             lockManager.release(tid, pid);
             return null;
         }
