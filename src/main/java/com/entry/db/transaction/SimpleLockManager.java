@@ -2,7 +2,6 @@ package com.entry.db.transaction;
 
 import com.entry.db.storage.PageId;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -96,8 +95,10 @@ public class SimpleLockManager implements LockManager {
             if (lockData == null) {
                 return;
             }
-            // case: txId is in waiting list, remove it from waiting list
-            if (lockData.waiting.remove(txId)) {
+            // case: txId is in waiting list, remove it from waiting list.
+            // tx1 and tx2 hold the share lock, and tx1 is waiting for the exclusive lock
+            lockData.waiting.remove(txId);
+            /*if (lockData.waiting.remove(txId)) {
                 log.debug("remove from waiting list...txId:{},pageId:{}", txId, pageId);
                 for (TransactionId holdTxId : lockData.holding.keySet()) {
                     if (holdTxId.equals(txId)) {
@@ -105,26 +106,31 @@ public class SimpleLockManager implements LockManager {
                     }
                     _txWaitForGraph.removeEdge(txId, holdTxId);
                 }
-            }
+            }*/
             // release lock that the txId holds
             if (holdsLock(txId, pageId) != null) {
                 // update lock table
                 lockData.holding.remove(txId);
+                // update lock mode
                 lockData.lockMode = null;
+                Iterator<LockMode> lockModeIterator = lockData.holding.values().iterator();
+                if (lockModeIterator.hasNext()) {
+                    lockData.lockMode = lockModeIterator.next();
+                }
                 _holdingTable.get(txId).remove(pageId);
                 // update wait-for graph. iterate the waiting list,remove the edge that point to the txId
-                for (LockNode lockNode : lockData.waiting) {
+                /*for (LockNode lockNode : lockData.waiting) {
                     _txWaitForGraph.removeEdge(lockNode.txId, txId);
-                }
+                }*/
                 // case: txId is in waiting list
-                if (lockData.waiting.remove(txId)) {
+                /*if (lockData.waiting.remove(txId)) {
                     for (TransactionId holdTxId : lockData.holding.keySet()) {
                         if (holdTxId.equals(txId)) {
                             continue;
                         }
                         _txWaitForGraph.removeEdge(txId, holdTxId);
                     }
-                }
+                }*/
             }
             // wake up the first transaction in waiting list
             while (lockData.waiting.size() > 0) {
@@ -135,6 +141,8 @@ public class SimpleLockManager implements LockManager {
                 }
                 log.debug("get lock success...mode:{},txId:{},pageId:{},thread:{}", node.lockMode, node.txId, pageId, Thread.currentThread());
                 lockData.waiting.pollFirst();
+                // update wait-for resource
+                _waitForResource.remove(node.txId);
                 // notify
                 synchronized (node) {
                     log.debug("notify transaction...{}", node.txId);
