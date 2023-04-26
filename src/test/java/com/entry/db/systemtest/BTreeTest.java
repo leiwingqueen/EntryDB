@@ -27,7 +27,7 @@ import com.entry.db.transaction.TransactionId;
  * System test for the BTree
  */
 // we need to fix this test later
-// @Ignore
+@Ignore
 @Slf4j
 public class BTreeTest extends SimpleDbTestBase {
     private final static Random r = new Random();

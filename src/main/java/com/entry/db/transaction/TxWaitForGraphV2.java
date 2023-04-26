@@ -4,6 +4,7 @@ import com.entry.db.storage.PageId;
 
 import java.util.*;
 
+// reference https://www.geeksforgeeks.org/wait-for-graph-deadlock-detection-in-distributed-system/
 public class TxWaitForGraphV2 {
     /**
      * check if there is a circle in the graph
