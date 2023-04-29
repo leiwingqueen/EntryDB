@@ -214,7 +214,7 @@ public class BTreeFile implements DbFile {
             return leafPage;
         }
         // internal page
-        BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
+        BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, perm);
         Iterator<BTreeEntry> iterator = internalPage.iterator();
         if (!iterator.hasNext()) {
             // will not happen
@@ -691,6 +691,7 @@ public class BTreeFile implements DbFile {
                 sibling.deleteTuple(rightTuple);
                 page.insertTuple(rightTuple);
                 entry.setKey(rightTuple.getField(keyField));
+                // entry.setKey(sibling.iterator().next().getField(keyField));
                 parent.updateEntry(entry);
             }
         } else {

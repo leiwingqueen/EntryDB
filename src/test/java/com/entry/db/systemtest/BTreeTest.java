@@ -136,6 +136,7 @@ public class BTreeTest extends SimpleDbTestBase {
         List<BTreeDeleter> deleteThreads = new ArrayList<>();
         for (BTreeInserter thread : insertThreads) {
             thread.rerun(bf, getRandomTupleData(), insertedTuples);
+            log.debug("deleting tuples...");
             BTreeDeleter bd = startDeleter(bf, insertedTuples);
             deleteThreads.add(bd);
         }

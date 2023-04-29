@@ -9,6 +9,7 @@ import com.entry.db.execution.Predicate.Op;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -35,7 +36,7 @@ public class BTreeUtility {
 
     /**
      * @return a Tuple with a single IntField with value n and with
-     *         RecordId(BTreePageId(1,2, BTreePageId.LEAF), 3)
+     * RecordId(BTreePageId(1,2, BTreePageId.LEAF), 3)
      */
     public static Tuple getBTreeTuple(int n) {
         Tuple tup = new Tuple(Utility.getTupleDesc(1));
@@ -46,7 +47,7 @@ public class BTreeUtility {
 
     /**
      * @return a Tuple with an IntField for every element of tupdata
-     *         and RecordId(BTreePageId(1, 2, BTreePageId.LEAF), 3)
+     * and RecordId(BTreePageId(1, 2, BTreePageId.LEAF), 3)
      */
     public static Tuple getBTreeTuple(int[] tupdata) {
         Tuple tup = new Tuple(Utility.getTupleDesc(tupdata.length));
@@ -58,7 +59,7 @@ public class BTreeUtility {
 
     /**
      * @return a Tuple with an IntField for every element of tupdata
-     *         and RecordId(BTreePageId(1, 2, BTreePageId.LEAF), 3)
+     * and RecordId(BTreePageId(1, 2, BTreePageId.LEAF), 3)
      */
     public static Tuple getBTreeTuple(List<Integer> tupdata) {
         Tuple tup = new Tuple(Utility.getTupleDesc(tupdata.size()));
@@ -70,7 +71,7 @@ public class BTreeUtility {
 
     /**
      * @return a Tuple with a 'width' IntFields each with value n and
-     *         with RecordId(BTreePageId(1, 2, BTreePageId.LEAF), 3)
+     * with RecordId(BTreePageId(1, 2, BTreePageId.LEAF), 3)
      */
     public static Tuple getBTreeTuple(int n, int width) {
         Tuple tup = new Tuple(Utility.getTupleDesc(width));
@@ -82,7 +83,7 @@ public class BTreeUtility {
 
     /**
      * @return a BTreeEntry with an IntField with value n and with
-     *         RecordId(BTreePageId(1,2, BTreePageId.INTERNAL), 3)
+     * RecordId(BTreePageId(1,2, BTreePageId.INTERNAL), 3)
      */
     public static BTreeEntry getBTreeEntry(int n) {
         BTreePageId leftChild = new BTreePageId(1, n, BTreePageId.LEAF);
@@ -94,7 +95,7 @@ public class BTreeUtility {
 
     /**
      * @return a BTreeEntry with an IntField with value n and with
-     *         RecordId(BTreePageId(tableid,2, BTreePageId.INTERNAL), 3)
+     * RecordId(BTreePageId(tableid,2, BTreePageId.INTERNAL), 3)
      */
     public static BTreeEntry getBTreeEntry(int n, int tableid) {
         BTreePageId leftChild = new BTreePageId(tableid, n, BTreePageId.LEAF);
@@ -106,7 +107,7 @@ public class BTreeUtility {
 
     /**
      * @return a BTreeEntry with an IntField with value key and with
-     *         RecordId(BTreePageId(tableid,2, BTreePageId.INTERNAL), 3)
+     * RecordId(BTreePageId(tableid,2, BTreePageId.INTERNAL), 3)
      */
     public static BTreeEntry getBTreeEntry(int n, int key, int tableid) {
         BTreePageId leftChild = new BTreePageId(tableid, n, BTreePageId.LEAF);
@@ -497,7 +498,7 @@ public class BTreeUtility {
      * Helper class that attempts to insert a tuple in a new thread
      *
      * @return a handle to the Thread that will attempt insertion after it
-     *         has been started
+     * has been started
      */
     public static class BTreeWriter extends Thread {
 
@@ -568,7 +569,7 @@ public class BTreeUtility {
 
         /**
          * @return an Exception instance if one occurred while inserting the tuple;
-         *         null otherwise
+         * null otherwise
          */
         public Exception getError() {
             synchronized (elock) {
@@ -581,7 +582,7 @@ public class BTreeUtility {
      * Helper class that searches for tuple(s) in a new thread
      *
      * @return a handle to the Thread that will attempt to search for tuple(s) after it
-     *         has been started
+     * has been started
      */
     static class BTreeReader extends Thread {
 
@@ -651,7 +652,7 @@ public class BTreeUtility {
 
         /**
          * @return an Exception instance if one occurred while searching for the tuple(s);
-         *         null otherwise
+         * null otherwise
          */
         public Exception getError() {
             synchronized (elock) {
@@ -664,7 +665,7 @@ public class BTreeUtility {
      * Helper class that attempts to insert a tuple in a new thread
      *
      * @return a handle to the Thread that will attempt insertion after it
-     *         has been started
+     * has been started
      */
     public static class BTreeInserter extends Thread {
 
@@ -735,7 +736,7 @@ public class BTreeUtility {
 
         /**
          * @return an Exception instance if one occurred while inserting the tuple;
-         *         null otherwise
+         * null otherwise
          */
         public Exception getError() {
             synchronized (elock) {
@@ -748,8 +749,9 @@ public class BTreeUtility {
      * Helper class that attempts to delete tuple(s) in a new thread
      *
      * @return a handle to the Thread that will attempt deletion after it
-     *         has been started
+     * has been started
      */
+    @Slf4j
     public static class BTreeDeleter extends Thread {
 
         TransactionId tid;
@@ -776,12 +778,14 @@ public class BTreeUtility {
                     throw new DbException("tuple desc mismatch");
                 }
                 IntField key = new IntField(tuple.get(bf.keyField()));
+                // log.info("delete tuple[start]:{}", key);
                 IndexPredicate ipred = new IndexPredicate(Op.EQUALS, key);
                 DbFileIterator it = bf.indexIterator(tid, ipred);
                 it.open();
                 while (it.hasNext()) {
                     Tuple t = it.next();
                     if (tupleToList(t).equals(tuple)) {
+                        log.info("find the tuple[success]:{}", key);
                         Database.getBufferPool().deleteTuple(tid, t);
                         break;
                     }
@@ -834,7 +838,7 @@ public class BTreeUtility {
 
         /**
          * @return an Exception instance if one occurred while inserting the tuple;
-         *         null otherwise
+         * null otherwise
          */
         public Exception getError() {
             synchronized (elock) {
