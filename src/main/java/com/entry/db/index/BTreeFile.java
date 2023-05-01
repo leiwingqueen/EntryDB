@@ -214,7 +214,7 @@ public class BTreeFile implements DbFile {
             return leafPage;
         }
         // internal page
-        BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, perm);
+        BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
         Iterator<BTreeEntry> iterator = internalPage.iterator();
         if (!iterator.hasNext()) {
             // will not happen
@@ -690,8 +690,8 @@ public class BTreeFile implements DbFile {
                 Tuple rightTuple = sibling.iterator().next();
                 sibling.deleteTuple(rightTuple);
                 page.insertTuple(rightTuple);
-                entry.setKey(rightTuple.getField(keyField));
-                // entry.setKey(sibling.iterator().next().getField(keyField));
+                // entry.setKey(rightTuple.getField(keyField));
+                entry.setKey(sibling.iterator().next().getField(keyField));
                 parent.updateEntry(entry);
             }
         } else {
@@ -928,6 +928,7 @@ public class BTreeFile implements DbFile {
             rightPage.deleteKeyAndLeftChild(entry);
             leftPage.insertEntry(entry);
         }
+        log.info("delete internal page...pageId:{}", rightPage.getId());
         // delete parent entry and recursively handle the case when the parent gets below minimum occupancy
         deleteParentEntry(tid, dirtypages, leftPage, parent, parentEntry);
         // update parent pointers of the children in the entries that were moved
