@@ -1,5 +1,6 @@
 package com.entry.db.common;
 
+import com.entry.db.index.BTreeFile;
 import com.entry.db.storage.DbFile;
 import com.entry.db.storage.HeapFile;
 import com.entry.db.storage.TupleDesc;
@@ -173,6 +174,8 @@ public class Catalog {
                 List<String> names = new ArrayList<>();
                 List<Type> types = new ArrayList<>();
                 String primaryKey = "";
+                int primaryKeyIndex = 0;
+                int idx = 0;
                 for (String e : els) {
                     String[] els2 = e.trim().split(" ");
                     names.add(els2[0].trim());
@@ -186,20 +189,24 @@ public class Catalog {
                         System.exit(0);
                     }
                     if (els2.length == 3) {
-                        if (els2[2].trim().equals("pk"))
+                        if (els2[2].trim().equals("pk")) {
                             primaryKey = els2[0].trim();
-                        else {
+                            primaryKeyIndex = idx;
+                        } else {
                             // System.out.println("Unknown annotation " + els2[2]);
                             log.error("Unknown annotation " + els2[2]);
                             System.exit(0);
                         }
                     }
+                    idx++;
                 }
                 Type[] typeAr = types.toArray(new Type[0]);
                 String[] namesAr = names.toArray(new String[0]);
                 TupleDesc t = new TupleDesc(typeAr, namesAr);
-                HeapFile tabHf = new HeapFile(new File(baseFolder + "/" + name + ".dat"), t);
-                addTable(tabHf, name, primaryKey);
+                BTreeFile bTreeFile = new BTreeFile(new File(baseFolder + "/" + name + ".btree.dat"), primaryKeyIndex, t);
+                addTable(bTreeFile, name, primaryKey);
+                // HeapFile tabHf = new HeapFile(new File(baseFolder + "/" + name + ".dat"), t);
+                // addTable(tabHf, name, primaryKey);
                 log.info("Added table : " + name + " with schema " + t);
             }
         } catch (IOException e) {

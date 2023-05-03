@@ -86,6 +86,7 @@ public class BTreeFileEncoder {
             int count = 0;
             Transaction t = new Transaction();
             while (it.hasNext()) {
+                t.start();
                 Tuple tup = it.next();
                 Database.getBufferPool().insertTuple(t.getId(), bf.getId(), tup);
                 count++;
