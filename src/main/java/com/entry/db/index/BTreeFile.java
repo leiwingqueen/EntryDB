@@ -338,11 +338,12 @@ public class BTreeFile implements DbFile {
         parentPage.insertEntry(new BTreeEntry(midKey, page.getId(), splitPage.getId()));
         dirtypages.put(parentPage.getId(), parentPage);
         // update parent pointers
+        updateParentPointer(tid, dirtypages, parentPage.getId(), page.getId());
         updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
-        if (field.compare(Op.GREATER_THAN_OR_EQ, midKey)) {
-            return splitPage;
-        } else {
+        if (field.compare(Op.LESS_THAN_OR_EQ, midKey)) {
             return page;
+        } else {
+            return splitPage;
         }
     }
 
@@ -395,15 +396,19 @@ public class BTreeFile implements DbFile {
         BTreeEntry midEntry = iterator.next();
         page.deleteKeyAndRightChild(midEntry);
         // update parent pointers,chidren's parent pointers
+        updateParentPointers(tid, dirtypages, page);
         updateParentPointers(tid, dirtypages, splitPage);
+
         BTreeInternalPage parentPage = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), field);
         parentPage.insertEntry(new BTreeEntry(midEntry.getKey(), page.getId(), splitPage.getId()));
-        updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
+        // updateParentPointer(tid, dirtypages, parentPage.getId(), page.getId());
+        // updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
+        updateParentPointers(tid, dirtypages, parentPage);
         dirtypages.put(parentPage.getId(), parentPage);
-        if (field.compare(Op.GREATER_THAN_OR_EQ, midEntry.getKey())) {
-            return splitPage;
-        } else {
+        if (field.compare(Op.LESS_THAN_OR_EQ, midEntry.getKey())) {
             return page;
+        } else {
+            return splitPage;
         }
     }
 

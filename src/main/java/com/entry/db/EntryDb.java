@@ -13,7 +13,7 @@ import java.io.File;
 import java.io.IOException;
 
 @Slf4j
-public class SimpleDb {
+public class EntryDb {
     public static void main(String[] args)
             throws DbException, TransactionAbortedException {
         // convert a file
@@ -28,7 +28,7 @@ public class SimpleDb {
                     File sourceTxtFile = new File(args[1]);
                     if (!sourceTxtFile.exists()) {
                         // load from resources
-                        String file = SimpleDb.class.getClassLoader().getResource(args[1]).getFile();
+                        String file = EntryDb.class.getClassLoader().getResource(args[1]).getFile();
                         sourceTxtFile = new File(file);
                     }
                     File targetDatFile = new File(sourceTxtFile.getAbsolutePath().replaceAll(".txt", ".dat"));
