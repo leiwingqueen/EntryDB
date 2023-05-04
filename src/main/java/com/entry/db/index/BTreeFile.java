@@ -1,5 +1,6 @@
 package com.entry.db.index;
 
+import ch.qos.logback.core.joran.conditional.PropertyWrapperForScripts;
 import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Debug;
@@ -30,6 +31,7 @@ import java.util.*;
  */
 @Slf4j
 public class BTreeFile implements DbFile {
+    public static final boolean CRABBING_PROTOCOL_ENABLED = false;
 
     private final File f;
     private final TupleDesc td;
@@ -196,18 +198,20 @@ public class BTreeFile implements DbFile {
         // we need to read page from bufferPool cause the buffer pool has the recent data
         if (pid.pgcateg() == BTreePageId.LEAF) {
             BTreeLeafPage leafPage = (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
-            if (perm == Permissions.READ_ONLY) {
-                while (parentStack.size() > 0) {
-                    BTreePageId parent = parentStack.pop();
-                    lockManager.release(tid, parent);
-                }
-            } else {
-                // Release lock for parent if “safe” A safe node is one that will not
-                // split or merge when updated (not full on insertion or more than half full on deletion
-                if (leafPage.getNumTuples() < leafPage.getMaxTuples() && leafPage.getNumTuples() > leafPage.getMaxTuples() / 2) {
+            if (CRABBING_PROTOCOL_ENABLED) {
+                if (perm == Permissions.READ_ONLY) {
                     while (parentStack.size() > 0) {
                         BTreePageId parent = parentStack.pop();
                         lockManager.release(tid, parent);
+                    }
+                } else {
+                    // Release lock for parent if “safe” A safe node is one that will not
+                    // split or merge when updated (not full on insertion or more than half full on deletion
+                    if (leafPage.getNumTuples() < leafPage.getMaxTuples() && leafPage.getNumTuples() > leafPage.getMaxTuples() / 2) {
+                        while (parentStack.size() > 0) {
+                            BTreePageId parent = parentStack.pop();
+                            lockManager.release(tid, parent);
+                        }
                     }
                 }
             }
@@ -240,19 +244,21 @@ public class BTreeFile implements DbFile {
             }
         }
         // add parent page to stack
-        if (perm == Permissions.READ_ONLY) {
-            while (parentStack.size() > 0) {
-                BTreePageId parent = parentStack.pop();
-                lockManager.release(tid, parent);
-            }
-        } else {
-            // check current page is safe?
-            // Release lock for parent if “safe” A safe node is one that will not
-            // split or merge when updated (not full on insertion or more than half full on deletion
-            if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
+        if (CRABBING_PROTOCOL_ENABLED) {
+            if (perm == Permissions.READ_ONLY) {
                 while (parentStack.size() > 0) {
                     BTreePageId parent = parentStack.pop();
                     lockManager.release(tid, parent);
+                }
+            } else {
+                // check current page is safe?
+                // Release lock for parent if “safe” A safe node is one that will not
+                // split or merge when updated (not full on insertion or more than half full on deletion
+                if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
+                    while (parentStack.size() > 0) {
+                        BTreePageId parent = parentStack.pop();
+                        lockManager.release(tid, parent);
+                    }
                 }
             }
         }
