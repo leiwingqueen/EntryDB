@@ -209,7 +209,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
         BTreeInternalPage leftChild = (BTreeInternalPage) Database.getBufferPool().getPage(tid, e.getLeftChild(), Permissions.READ_ONLY);
         BTreeInternalPage rightChild = (BTreeInternalPage) Database.getBufferPool().getPage(tid, e.getRightChild(), Permissions.READ_ONLY);
         assertTrue(leftChild.getNumEmptySlots() <= 252);
-        log.info("right child has {} empty slots,pageId:{}", rightChild.getNumEmptySlots(), rightChild.getId());
+        log.info("right child has {} empty slots,pageId:{}", rightChild.getNumEmptySlots(), rightChild.getId(), rightChild);
         assertTrue(rightChild.getNumEmptySlots() <= 252);
 
         // now insert some random tuples and make sure we can find them

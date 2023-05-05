@@ -414,8 +414,9 @@ public class BTreeFile implements DbFile {
         // updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
         updateParentPointers(tid, dirtypages, parentPage);
         dirtypages.put(parentPage.getId(), parentPage);
-        log.info("internal page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}", page.getId(), page.getNumEntries(),
-                splitPage.getId(), splitPage.getNumEntries());
+        log.info("internal page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}," +
+                        "split page hash code:{}", page.getId(), page.getNumEntries(),
+                splitPage.getId(), splitPage.getNumEntries(), splitPage.hashCode());
         if (field.compare(Op.LESS_THAN_OR_EQ, midEntry.getKey())) {
             return page;
         } else {
