@@ -347,13 +347,13 @@ public class BufferPool {
             DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
             Page page = pageTable[frameId];
             if (page.isDirty() != null) {
+                log.info("flush page to disk...pid:{}", pid);
                 // append an update record to the log, with
                 // a before-image and after-image.
                 // redo log
                 LogFile logFile = Database.getLogFile();
                 logFile.logWrite(page.isDirty(), page.getBeforeImage(), page);
                 logFile.force();
-                // TODO: no force strategy. shall we need to remove the code following?
                 page.markDirty(false, null);
                 dbFile.writePage(page);
             }
@@ -407,7 +407,7 @@ public class BufferPool {
             }
             //throw new DbException("no page to evict");
         }
-        log.debug("evict page...page:{}", pageEvict.getId());
+        log.info("evict page...page:{}", pageEvict.getId());
         // lru cache update
         lruRemove(pageEvict.getId());
         Integer frameId = pageId2FrameIdMap.get(pageEvict.getId());

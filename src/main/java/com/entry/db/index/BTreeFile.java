@@ -1,10 +1,7 @@
 package com.entry.db.index;
 
 import ch.qos.logback.core.joran.conditional.PropertyWrapperForScripts;
-import com.entry.db.common.Database;
-import com.entry.db.common.DbException;
-import com.entry.db.common.Debug;
-import com.entry.db.common.Permissions;
+import com.entry.db.common.*;
 import com.entry.db.execution.IndexPredicate;
 import com.entry.db.execution.Predicate.Op;
 import com.entry.db.storage.*;
@@ -414,9 +411,10 @@ public class BTreeFile implements DbFile {
         // updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
         updateParentPointers(tid, dirtypages, parentPage);
         dirtypages.put(parentPage.getId(), parentPage);
+        BTreeInternalPage sp = (BTreeInternalPage) Database.getBufferPool().getPage(tid, splitPage.getId(), Permissions.READ_WRITE);
         log.info("internal page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}," +
-                        "split page hash code:{}", page.getId(), page.getNumEntries(),
-                splitPage.getId(), splitPage.getNumEntries(), splitPage.hashCode());
+                        "split page empty slots:{}", page.getId(), page.getNumEntries(),
+                splitPage.getId(), sp.getNumEntries(), sp.getNumEmptySlots());
         if (field.compare(Op.LESS_THAN_OR_EQ, midEntry.getKey())) {
             return page;
         } else {
