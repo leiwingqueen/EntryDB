@@ -343,7 +343,7 @@ public class BTreeFile implements DbFile {
         // update parent pointers
         updateParentPointer(tid, dirtypages, parentPage.getId(), page.getId());
         updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
-        log.info("leaf page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}",
+        log.debug("leaf page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}",
                 page.getId(), page.getNumTuples(), splitPage.getId(), splitPage.getNumTuples());
         if (field.compare(Op.LESS_THAN_OR_EQ, midKey)) {
             return page;
@@ -402,7 +402,7 @@ public class BTreeFile implements DbFile {
         BTreeEntry midEntry = iterator.next();
         page.deleteKeyAndRightChild(midEntry);
         // update parent pointers,chidren's parent pointers
-        updateParentPointers(tid, dirtypages, page);
+        // updateParentPointers(tid, dirtypages, page);
         updateParentPointers(tid, dirtypages, splitPage);
 
         BTreeInternalPage parentPage = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), field);
@@ -411,10 +411,10 @@ public class BTreeFile implements DbFile {
         // updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
         updateParentPointers(tid, dirtypages, parentPage);
         dirtypages.put(parentPage.getId(), parentPage);
-        BTreeInternalPage sp = (BTreeInternalPage) Database.getBufferPool().getPage(tid, splitPage.getId(), Permissions.READ_WRITE);
-        log.info("internal page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}," +
+        // BTreeInternalPage sp = (BTreeInternalPage) Database.getBufferPool().getPage(tid, splitPage.getId(), Permissions.READ_WRITE);
+        log.debug("internal page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}," +
                         "split page empty slots:{}", page.getId(), page.getNumEntries(),
-                splitPage.getId(), sp.getNumEntries(), sp.getNumEmptySlots());
+                splitPage.getId(), splitPage.getNumEntries(), splitPage.getNumEmptySlots());
         if (field.compare(Op.LESS_THAN_OR_EQ, midEntry.getKey())) {
             return page;
         } else {
@@ -490,6 +490,9 @@ public class BTreeFile implements DbFile {
         if (!p.getParentId().equals(pid)) {
             p = (BTreePage) getPage(tid, dirtypages, child, Permissions.READ_WRITE);
             p.setParentId(pid);
+            // add to dirty pages since parent id changed. add by leiwingqueen 2023/05/07
+            dirtypages.put(p.getId(), p);
+            p.markDirty(true, tid);
         }
 
     }

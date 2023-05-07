@@ -189,6 +189,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
         assertEquals(505, bigFile.numPages());
 
         // now insert a tuple
+        log.info("insert tuple...");
         Database.getBufferPool().insertTuple(tid, bigFile.getId(), BTreeUtility.getBTreeTuple(10, 2));
 
         // there should now be 505 leaf pages + 3 internal nodes
