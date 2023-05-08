@@ -90,7 +90,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 
         int totalTuples = page.getNumTuples() + sibling.getNumTuples();
 
-        empty.stealFromLeafPage(page, sibling, parent, entry, false);
+        empty.stealFromLeafPage(null, page, sibling, parent, entry, false);
         assertEquals(totalTuples, page.getNumTuples() + sibling.getNumTuples());
         assertTrue(page.getNumTuples() == totalTuples / 2 || page.getNumTuples() == totalTuples / 2 + 1);
         assertTrue(sibling.getNumTuples() == totalTuples / 2 || sibling.getNumTuples() == totalTuples / 2 + 1);
@@ -129,7 +129,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 
         int totalTuples = page.getNumTuples() + sibling.getNumTuples();
 
-        empty.stealFromLeafPage(page, sibling, parent, entry, true);
+        empty.stealFromLeafPage(null, page, sibling, parent, entry, true);
         assertEquals(totalTuples, page.getNumTuples() + sibling.getNumTuples());
         assertTrue(page.getNumTuples() == totalTuples / 2 || page.getNumTuples() == totalTuples / 2 + 1);
         assertTrue(sibling.getNumTuples() == totalTuples / 2 || sibling.getNumTuples() == totalTuples / 2 + 1);
