@@ -4,6 +4,7 @@ import com.entry.db.common.Database;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Type;
 import com.entry.db.execution.Predicate;
+import com.entry.db.index.BTreeFile;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 
@@ -94,7 +95,8 @@ public class TableStats {
         this.ioCostPerPage = ioCostPerPage;
         this.tupleDesc = Database.getCatalog().getTupleDesc(tableid);
         // scan the entire table to find the min and max value
-        HeapFile dbFile = (HeapFile) Database.getCatalog().getDatabaseFile(tableid);
+        // HeapFile dbFile = (HeapFile) Database.getCatalog().getDatabaseFile(tableid);
+        DbFile dbFile = Database.getCatalog().getDatabaseFile(tableid);
         this.numPages = dbFile.numPages();
         int numFields = tupleDesc.numFields();
         Field[][] maxMin = new Field[numFields][2];

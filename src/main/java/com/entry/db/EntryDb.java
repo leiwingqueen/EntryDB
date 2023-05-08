@@ -3,6 +3,7 @@ package com.entry.db;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Type;
 import com.entry.db.common.Utility;
+import com.entry.db.index.BTreeFileEncoder;
 import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionAbortedException;
 import com.entry.db.transaction.TransactionId;
@@ -12,7 +13,7 @@ import java.io.File;
 import java.io.IOException;
 
 @Slf4j
-public class SimpleDb {
+public class EntryDb {
     public static void main(String[] args)
             throws DbException, TransactionAbortedException {
         // convert a file
@@ -27,7 +28,7 @@ public class SimpleDb {
                     File sourceTxtFile = new File(args[1]);
                     if (!sourceTxtFile.exists()) {
                         // load from resources
-                        String file = SimpleDb.class.getClassLoader().getResource(args[1]).getFile();
+                        String file = EntryDb.class.getClassLoader().getResource(args[1]).getFile();
                         sourceTxtFile = new File(file);
                     }
                     File targetDatFile = new File(sourceTxtFile.getAbsolutePath().replaceAll(".txt", ".dat"));
@@ -61,9 +62,11 @@ public class SimpleDb {
                         if (args.length == 5)
                             fieldSeparator = args[4].charAt(0);
                     }
-
-                    HeapFileEncoder.convert(sourceTxtFile, targetDatFile,
-                            BufferPool.getPageSize(), numOfAttributes, ts, fieldSeparator);
+                    File hFile = new File(sourceTxtFile.getAbsolutePath().replaceAll(".txt", ".dat"));
+                    File bTreeFile = new File(sourceTxtFile.getAbsolutePath().replaceAll(".txt", ".btree.dat"));
+                    BTreeFileEncoder.convert(sourceTxtFile, hFile, bTreeFile, 0, numOfAttributes);
+                    /*HeapFileEncoder.convert(sourceTxtFile, targetDatFile,
+                            BufferPool.getPageSize(), numOfAttributes, ts, fieldSeparator);*/
 
                 } catch (IOException e) {
                     throw new RuntimeException(e);

@@ -700,7 +700,7 @@ public class Parser {
             StringBuilder buffer = new StringBuilder();
             String line;
             boolean quit = false;
-            while (!quit && (line = reader.readLine("SimpleDB> ")) != null) {
+            while (!quit && (line = reader.readLine("EntryDB> ")) != null) {
                 // Split statements at ';': handles multiple statements on one
                 // line, or one
                 // statement spread across many lines

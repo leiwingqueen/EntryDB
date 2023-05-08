@@ -126,7 +126,8 @@ public class BufferPool {
             } else {
                 if (freeList.size() == 0) {
                     // throw new DbException("not enough space to allocate page");
-                    evictPage();
+                    PageId evictPage = evictPage();
+                    // log.info("for get page:{},evict page...page:{}", pid, evictPage);
                 }
                 Integer frameId = freeList.pollFirst();
                 // load data from disk(random access disk)
@@ -347,13 +348,13 @@ public class BufferPool {
             DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
             Page page = pageTable[frameId];
             if (page.isDirty() != null) {
+                log.debug("flush page to disk...pid:{}", pid);
                 // append an update record to the log, with
                 // a before-image and after-image.
                 // redo log
                 LogFile logFile = Database.getLogFile();
                 logFile.logWrite(page.isDirty(), page.getBeforeImage(), page);
                 logFile.force();
-                // TODO: no force strategy. shall we need to remove the code following?
                 page.markDirty(false, null);
                 dbFile.writePage(page);
             }
@@ -378,7 +379,7 @@ public class BufferPool {
      * Discards a page from the  pool.
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
-    private void evictPage() throws DbException {
+    private PageId evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
         if (head.next == tail) {
@@ -407,12 +408,12 @@ public class BufferPool {
             }
             //throw new DbException("no page to evict");
         }
-        log.debug("evict page...page:{}", pageEvict.getId());
         // lru cache update
         lruRemove(pageEvict.getId());
         Integer frameId = pageId2FrameIdMap.get(pageEvict.getId());
         pageId2FrameIdMap.remove(pageEvict.getId());
         freeList.add(frameId);
+        return pageEvict.getId();
     }
 
     private void lruRemove(PageId pageId) {

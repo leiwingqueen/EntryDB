@@ -1,9 +1,7 @@
 package com.entry.db.index;
 
-import com.entry.db.common.Database;
-import com.entry.db.common.DbException;
-import com.entry.db.common.Debug;
-import com.entry.db.common.Permissions;
+import ch.qos.logback.core.joran.conditional.PropertyWrapperForScripts;
+import com.entry.db.common.*;
 import com.entry.db.execution.IndexPredicate;
 import com.entry.db.execution.Predicate.Op;
 import com.entry.db.storage.*;
@@ -30,6 +28,7 @@ import java.util.*;
  */
 @Slf4j
 public class BTreeFile implements DbFile {
+    public static final boolean CRABBING_PROTOCOL_ENABLED = false;
 
     private final File f;
     private final TupleDesc td;
@@ -196,25 +195,27 @@ public class BTreeFile implements DbFile {
         // we need to read page from bufferPool cause the buffer pool has the recent data
         if (pid.pgcateg() == BTreePageId.LEAF) {
             BTreeLeafPage leafPage = (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
-            if (perm == Permissions.READ_ONLY) {
-                while (parentStack.size() > 0) {
-                    BTreePageId parent = parentStack.pop();
-                    lockManager.release(tid, parent);
-                }
-            } else {
-                // Release lock for parent if “safe” A safe node is one that will not
-                // split or merge when updated (not full on insertion or more than half full on deletion
-                if (leafPage.getNumTuples() < leafPage.getMaxTuples() && leafPage.getNumTuples() > leafPage.getMaxTuples() / 2) {
+            if (CRABBING_PROTOCOL_ENABLED) {
+                if (perm == Permissions.READ_ONLY) {
                     while (parentStack.size() > 0) {
                         BTreePageId parent = parentStack.pop();
                         lockManager.release(tid, parent);
+                    }
+                } else {
+                    // Release lock for parent if “safe” A safe node is one that will not
+                    // split or merge when updated (not full on insertion or more than half full on deletion
+                    if (leafPage.getNumTuples() < leafPage.getMaxTuples() && leafPage.getNumTuples() > leafPage.getMaxTuples() / 2) {
+                        while (parentStack.size() > 0) {
+                            BTreePageId parent = parentStack.pop();
+                            lockManager.release(tid, parent);
+                        }
                     }
                 }
             }
             return leafPage;
         }
         // internal page
-        BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
+        BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, CRABBING_PROTOCOL_ENABLED ? perm : Permissions.READ_ONLY);
         Iterator<BTreeEntry> iterator = internalPage.iterator();
         if (!iterator.hasNext()) {
             // will not happen
@@ -240,23 +241,25 @@ public class BTreeFile implements DbFile {
             }
         }
         // add parent page to stack
-        if (perm == Permissions.READ_ONLY) {
-            while (parentStack.size() > 0) {
-                BTreePageId parent = parentStack.pop();
-                lockManager.release(tid, parent);
-            }
-        } else {
-            // check current page is safe?
-            // Release lock for parent if “safe” A safe node is one that will not
-            // split or merge when updated (not full on insertion or more than half full on deletion
-            if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
+        if (CRABBING_PROTOCOL_ENABLED) {
+            if (perm == Permissions.READ_ONLY) {
                 while (parentStack.size() > 0) {
                     BTreePageId parent = parentStack.pop();
                     lockManager.release(tid, parent);
                 }
+            } else {
+                // check current page is safe?
+                // Release lock for parent if “safe” A safe node is one that will not
+                // split or merge when updated (not full on insertion or more than half full on deletion
+                if (internalPage.getNumEntries() < internalPage.getMaxEntries() && internalPage.getNumEntries() > internalPage.getMaxEntries() / 2) {
+                    while (parentStack.size() > 0) {
+                        BTreePageId parent = parentStack.pop();
+                        lockManager.release(tid, parent);
+                    }
+                }
             }
+            parentStack.push(pid);
         }
-        parentStack.push(pid);
         BTreeLeafPage leafPage = findLeafPage(tid, dirtypages, childPage, perm, f, parentStack, leftMost);
         return leafPage;
     }
@@ -338,11 +341,14 @@ public class BTreeFile implements DbFile {
         parentPage.insertEntry(new BTreeEntry(midKey, page.getId(), splitPage.getId()));
         dirtypages.put(parentPage.getId(), parentPage);
         // update parent pointers
+        updateParentPointer(tid, dirtypages, parentPage.getId(), page.getId());
         updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
-        if (field.compare(Op.GREATER_THAN_OR_EQ, midKey)) {
-            return splitPage;
-        } else {
+        log.debug("leaf page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}",
+                page.getId(), page.getNumTuples(), splitPage.getId(), splitPage.getNumTuples());
+        if (field.compare(Op.LESS_THAN_OR_EQ, midKey)) {
             return page;
+        } else {
+            return splitPage;
         }
     }
 
@@ -380,9 +386,6 @@ public class BTreeFile implements DbFile {
         // will be useful here.  Return the page into which an entry with the given key field
         // should be inserted.
         BTreeInternalPage splitPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
-        // update dirtypages
-        dirtypages.put(page.getId(), page);
-        dirtypages.put(splitPage.getId(), splitPage);
         // move half of the tuples to the new page
         int numEntries = page.getNumEntries();
         int mid = numEntries / 2;
@@ -392,18 +395,30 @@ public class BTreeFile implements DbFile {
             page.deleteKeyAndRightChild(entry);
             splitPage.insertEntry(entry);
         }
+        // update dirtypages
+        dirtypages.put(page.getId(), page);
+        dirtypages.put(splitPage.getId(), splitPage);
+
         BTreeEntry midEntry = iterator.next();
         page.deleteKeyAndRightChild(midEntry);
         // update parent pointers,chidren's parent pointers
+        // updateParentPointers(tid, dirtypages, page);
         updateParentPointers(tid, dirtypages, splitPage);
+
         BTreeInternalPage parentPage = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), field);
         parentPage.insertEntry(new BTreeEntry(midEntry.getKey(), page.getId(), splitPage.getId()));
-        updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
+        // updateParentPointer(tid, dirtypages, parentPage.getId(), page.getId());
+        // updateParentPointer(tid, dirtypages, parentPage.getId(), splitPage.getId());
+        updateParentPointers(tid, dirtypages, parentPage);
         dirtypages.put(parentPage.getId(), parentPage);
-        if (field.compare(Op.GREATER_THAN_OR_EQ, midEntry.getKey())) {
-            return splitPage;
-        } else {
+        // BTreeInternalPage sp = (BTreeInternalPage) Database.getBufferPool().getPage(tid, splitPage.getId(), Permissions.READ_WRITE);
+        log.debug("internal page split...page:{},page tuple size:{}, splitPage:{},split page tuple size:{}," +
+                        "split page empty slots:{}", page.getId(), page.getNumEntries(),
+                splitPage.getId(), splitPage.getNumEntries(), splitPage.getNumEmptySlots());
+        if (field.compare(Op.LESS_THAN_OR_EQ, midEntry.getKey())) {
             return page;
+        } else {
+            return splitPage;
         }
     }
 
@@ -442,6 +457,7 @@ public class BTreeFile implements DbFile {
             // update the previous root to now point to this new root.
             BTreePage prevRootPage = (BTreePage) getPage(tid, dirtypages, prevRootId, Permissions.READ_WRITE);
             prevRootPage.setParentId(parent.getId());
+            log.info("root page split...prev root:{},new root:{}", prevRootId, parent.getId());
         } else {
             // lock the parent page
             parent = (BTreeInternalPage) getPage(tid, dirtypages, parentId,
@@ -474,6 +490,9 @@ public class BTreeFile implements DbFile {
         if (!p.getParentId().equals(pid)) {
             p = (BTreePage) getPage(tid, dirtypages, child, Permissions.READ_WRITE);
             p.setParentId(pid);
+            // add to dirty pages since parent id changed. add by leiwingqueen 2023/05/07
+            dirtypages.put(p.getId(), p);
+            p.markDirty(true, tid);
         }
 
     }
@@ -684,24 +703,22 @@ public class BTreeFile implements DbFile {
         // Move some of the tuples from the sibling to the page so
         // that the tuples are evenly distributed. Be sure to update
         // the corresponding parent entry.
-        int moveNum = (page.getNumTuples() + sibling.getNumTuples() + 1) / 2 - page.getNumTuples();
-        if (isRightSibling) {
-            for (int i = 0; i < moveNum; i++) {
-                Tuple rightTuple = sibling.iterator().next();
-                sibling.deleteTuple(rightTuple);
-                page.insertTuple(rightTuple);
-                entry.setKey(rightTuple.getField(keyField));
-                parent.updateEntry(entry);
-            }
-        } else {
-            for (int i = 0; i < moveNum; i++) {
-                Tuple leftTuple = sibling.reverseIterator().next();
-                sibling.deleteTuple(leftTuple);
-                page.insertTuple(leftTuple);
-                entry.setKey(leftTuple.getField(keyField));
-                parent.updateEntry(entry);
-            }
+        int moveNum = sibling.getNumTuples() - (page.getNumTuples() + sibling.getNumTuples()) / 2;
+        Iterator<Tuple> iterator = isRightSibling ? sibling.iterator() : sibling.reverseIterator();
+        // move some tuples from sibling to page
+        for (int i = 0; i < moveNum; i++) {
+            Tuple tuple = iterator.next();
+            sibling.deleteTuple(tuple);
+            page.insertTuple(tuple);
         }
+
+        // update parent entry
+        if (isRightSibling) {
+            entry.setKey(sibling.iterator().next().getField(keyField));
+        } else {
+            entry.setKey(page.iterator().next().getField(keyField));
+        }
+        parent.updateEntry(entry);
     }
 
     /**
@@ -776,16 +793,18 @@ public class BTreeFile implements DbFile {
         // that the entries are evenly distributed. Be sure to update
         // the corresponding parent entry. Be sure to update the parent
         // pointers of all children in the entries that were moved.
-
-        int moveNum = (page.getNumEntries() + leftSibling.getNumEntries() + 1) / 2 - page.getNumEntries();
+        int moveNum = leftSibling.getNumEntries() - (page.getNumEntries() + leftSibling.getNumEntries()) / 2;
+        BTreeEntry rightEntry = page.iterator().next();
         for (int i = 0; i < moveNum; i++) {
             BTreeEntry leftEntry = leftSibling.reverseIterator().next();
             leftSibling.deleteKeyAndRightChild(leftEntry);
-            BTreeEntry pageEntry = page.iterator().next();
-            page.insertEntry(new BTreeEntry(parentEntry.getKey(), leftEntry.getRightChild(), pageEntry.getLeftChild()));
+            // BTreeEntry pageEntry = page.iterator().next();
+            BTreeEntry moveTuple = new BTreeEntry(parentEntry.getKey(), leftEntry.getRightChild(), rightEntry.getLeftChild());
+            page.insertEntry(moveTuple);
             parentEntry.setKey(leftEntry.getKey());
-            parent.updateEntry(parentEntry);
+            rightEntry = moveTuple;
         }
+        parent.updateEntry(parentEntry);
         // update dirty pages
         dirtypages.put(page.getId(), page);
         dirtypages.put(leftSibling.getId(), leftSibling);
@@ -819,15 +838,19 @@ public class BTreeFile implements DbFile {
         // the corresponding parent entry. Be sure to update the parent
         // pointers of all children in the entries that were moved.
 
-        int moveNum = (page.getNumEntries() + rightSibling.getNumEntries() + 1) / 2 - page.getNumEntries();
+        int moveNum = rightSibling.getNumEntries() - (page.getNumEntries() + rightSibling.getNumEntries()) / 2;
+        // Iterator<BTreeEntry> iterator = rightSibling.iterator();
+        BTreeEntry leftEntry = page.reverseIterator().next();
         for (int i = 0; i < moveNum; i++) {
             BTreeEntry rightEntry = rightSibling.iterator().next();
             rightSibling.deleteKeyAndLeftChild(rightEntry);
-            BTreeEntry pageEntry = page.reverseIterator().next();
-            page.insertEntry(new BTreeEntry(parentEntry.getKey(), pageEntry.getRightChild(), rightEntry.getLeftChild()));
+            // BTreeEntry pageEntry = page.reverseIterator().next();
+            BTreeEntry moveTuple = new BTreeEntry(parentEntry.getKey(), leftEntry.getRightChild(), rightEntry.getLeftChild());
+            page.insertEntry(moveTuple);
             parentEntry.setKey(rightEntry.getKey());
-            parent.updateEntry(parentEntry);
+            leftEntry = moveTuple;
         }
+        parent.updateEntry(parentEntry);
         dirtypages.put(page.getId(), page);
         dirtypages.put(rightSibling.getId(), rightSibling);
         dirtypages.put(parent.getId(), parent);
@@ -927,6 +950,7 @@ public class BTreeFile implements DbFile {
             rightPage.deleteKeyAndLeftChild(entry);
             leftPage.insertEntry(entry);
         }
+        log.info("delete internal page...pageId:{}", rightPage.getId());
         // delete parent entry and recursively handle the case when the parent gets below minimum occupancy
         deleteParentEntry(tid, dirtypages, leftPage, parent, parentEntry);
         // update parent pointers of the children in the entries that were moved
