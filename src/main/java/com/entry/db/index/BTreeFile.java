@@ -842,7 +842,7 @@ public class BTreeFile implements DbFile {
         // Iterator<BTreeEntry> iterator = rightSibling.iterator();
         BTreeEntry leftEntry = page.reverseIterator().next();
         for (int i = 0; i < moveNum; i++) {
-            BTreeEntry rightEntry = page.reverseIterator().next();
+            BTreeEntry rightEntry = rightSibling.iterator().next();
             rightSibling.deleteKeyAndLeftChild(rightEntry);
             // BTreeEntry pageEntry = page.reverseIterator().next();
             BTreeEntry moveTuple = new BTreeEntry(parentEntry.getKey(), leftEntry.getRightChild(), rightEntry.getLeftChild());
