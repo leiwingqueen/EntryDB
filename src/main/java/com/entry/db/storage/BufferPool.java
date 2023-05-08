@@ -254,8 +254,8 @@ public class BufferPool {
         Catalog catalog = Database.getCatalog();
         DbFile dbFile = catalog.getDatabaseFile(tableId);
         // update buffer pool data
-        List<Page> pages = dbFile.insertTuple(tid, t);
-        markDirtyPages(tid, pages);
+        dbFile.insertTuple(tid, t);
+        // markDirtyPages(tid, pages);
     }
 
     /**

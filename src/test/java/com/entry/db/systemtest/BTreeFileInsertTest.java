@@ -95,7 +95,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 
         Tuple tup = null;
 
-        BTreeChecker.checkRep(empty, tid, new HashMap<>(), true);
+        BTreeChecker.checkRep(empty, tid, true);
 
         // add a bunch of identical tuples
         for (int i = 0; i < 5; ++i) {
@@ -106,7 +106,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 
         }
 
-        BTreeChecker.checkRep(empty, tid, new HashMap<>(), true);
+        BTreeChecker.checkRep(empty, tid, true);
 
         // now search for some ranges and make sure we find all the tuples
         IndexPredicate ipred = new IndexPredicate(Op.EQUALS, new IntField(3));
