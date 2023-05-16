@@ -324,6 +324,7 @@ public class BufferPool {
             }
             Integer frameId = pageId2FrameIdMap.get(pid);
             pageId2FrameIdMap.remove(pid);
+            pageTable[frameId] = null;
             freeList.add(frameId);
             lruRemove(pid);
         } finally {

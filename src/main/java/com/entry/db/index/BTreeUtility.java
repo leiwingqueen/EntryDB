@@ -785,7 +785,7 @@ public class BTreeUtility {
                 while (it.hasNext()) {
                     Tuple t = it.next();
                     if (tupleToList(t).equals(tuple)) {
-                        log.info("find the tuple[success]:{}", key);
+                        log.debug("find the tuple[success]:{}", key);
                         Database.getBufferPool().deleteTuple(tid, t);
                         break;
                     }

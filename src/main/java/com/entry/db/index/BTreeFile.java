@@ -1184,7 +1184,7 @@ public class BTreeFile implements DbFile {
      * @throws DbException
      * @throws IOException
      * @throws TransactionAbortedException
-     * @see #getEmptyPage(TransactionId, Map, int)
+     * @see #getEmptyPage(TransactionId, int)
      */
     public void setEmptyPage(TransactionId tid, int emptyPageNo)
             throws DbException, IOException, TransactionAbortedException {
@@ -1221,12 +1221,11 @@ public class BTreeFile implements DbFile {
         if (headerId == null) {
             rootPtr = (BTreeRootPtrPage) Database.getBufferPool().getPage(tid, BTreeRootPtrPage.getId(tableid), Permissions.READ_WRITE);
             // rootPtr = (BTreeRootPtrPage) getPage(tid, dirtypages, BTreeRootPtrPage.getId(tableid), Permissions.READ_WRITE);
-
+            rootPtr.markDirty(true, tid);
             BTreeHeaderPage headerPage = (BTreeHeaderPage) getEmptyPage(tid, BTreePageId.HEADER);
             headerId = headerPage.getId();
             headerPage.init();
             rootPtr.setHeaderId(headerId);
-            rootPtr.markDirty(true, tid);
         }
 
         // iterate through all the existing header pages to find the one containing the slot

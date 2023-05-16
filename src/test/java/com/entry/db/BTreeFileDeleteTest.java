@@ -246,7 +246,8 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
         while (count < entriesToSteal) {
             assertTrue(it.hasNext());
             e = it.next();
-            BTreePage p = (BTreePage) dirtypages.get(e.getLeftChild());
+            BTreePage p = (BTreePage) Database.getBufferPool().getPage(tid, e.getLeftChild(), Permissions.READ_ONLY);
+            // BTreePage p = (BTreePage) dirtypages.get(e.getLeftChild());
             assertEquals(pageId, p.getParentId());
             ++count;
         }
@@ -312,7 +313,8 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
         while (count < entriesToSteal) {
             assertTrue(it.hasNext());
             e = it.next();
-            BTreePage p = (BTreePage) dirtypages.get(e.getRightChild());
+            // BTreePage p = (BTreePage) dirtypages.get(e.getRightChild());
+            BTreePage p = (BTreePage) Database.getBufferPool().getPage(tid, e.getRightChild(), Permissions.READ_ONLY);
             assertEquals(pageId, p.getParentId());
             ++count;
         }
