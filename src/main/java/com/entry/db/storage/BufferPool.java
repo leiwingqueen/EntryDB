@@ -50,9 +50,10 @@ public class BufferPool {
     private Deque<Integer> freeList;
     // page evict policy. we can simply use lru strategy.
     // link list+hash map
-    private Map<PageId, LruNode> lruMap;
-    private LruNode head;
-    private LruNode tail;
+    private LRUReplacer lruReplacer;
+    // private Map<PageId, LruNode> lruMap;
+    // private LruNode head;
+    // private LruNode tail;
     // private int pageSize = DEFAULT_PAGE_SIZE;
     private ReentrantReadWriteLock latch;
 
@@ -70,14 +71,9 @@ public class BufferPool {
         for (int i = 0; i < numPages; i++) {
             freeList.add(i);
         }
-        // lru data structure init
-        lruMap = new HashMap<>();
-        head = new LruNode(null);
-        tail = new LruNode(null);
-        head.next = tail;
-        tail.pre = head;
         lockManager = new SimpleLockManager();
         latch = new ReentrantReadWriteLock();
+        lruReplacer = new LRUReplacerImpl();
     }
 
     public static int getPageSize() {
@@ -121,13 +117,14 @@ public class BufferPool {
             if (pageId2FrameIdMap.containsKey(pid)) {
                 Integer frameId = pageId2FrameIdMap.get(pid);
                 page = pageTable[frameId];
+                // pin the page
+                page.pin();
+                lruReplacer.remove(frameId);
                 // update lru map
-                lruUpdate(pid);
+                // lruUpdate(pid);
             } else {
-                if (freeList.size() == 0) {
-                    // throw new DbException("not enough space to allocate page");
-                    PageId evictPage = evictPage();
-                    // log.info("for get page:{},evict page...page:{}", pid, evictPage);
+                if (freeList.size() <= 0) {
+                    evictPage();
                 }
                 Integer frameId = freeList.pollFirst();
                 // load data from disk(random access disk)
@@ -136,8 +133,9 @@ public class BufferPool {
                 page = dbFile.readPage(pid);
                 pageTable[frameId] = page;
                 pageId2FrameIdMap.put(pid, frameId);
-                // update lru cache
-                lruUpdate(pid);
+                // pin the page
+                page.pin();
+                lruReplacer.remove(frameId);
             }
         } finally {
             latch.writeLock().unlock();
@@ -323,10 +321,13 @@ public class BufferPool {
                 return;
             }
             Integer frameId = pageId2FrameIdMap.get(pid);
+            Page page = pageTable[frameId];
+            if (page.isPinned()) {
+                throw new IllegalArgumentException("page is pinned, can not remove");
+            }
             pageId2FrameIdMap.remove(pid);
             pageTable[frameId] = null;
             freeList.add(frameId);
-            lruRemove(pid);
         } finally {
             latch.writeLock().unlock();
         }
@@ -368,8 +369,13 @@ public class BufferPool {
      * Write all pages of the specified transaction to disk.
      */
     public void flushPages(TransactionId tid) throws IOException {
-        // TODO: some code goes here
+        // some code goes here
         // not necessary for lab1|lab2
+        Iterator<PageId> iterator = lockManager.findAllLockPage(tid);
+        while (iterator.hasNext()) {
+            PageId pageId = iterator.next();
+            flushPage(pageId);
+        }
     }
 
     public LockManager getLockManager() {
@@ -380,77 +386,25 @@ public class BufferPool {
      * Discards a page from the  pool.
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
-    private PageId evictPage() throws DbException {
+    private void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
-        if (head.next == tail) {
+        int frameId = lruReplacer.victim();
+        if (frameId < 0) {
             throw new DbException("no page to evict");
         }
-        LruNode node = head.next;
-        Page pageEvict = null;
-        while (node != tail) {
-            Integer frameId = pageId2FrameIdMap.get(node.pageId);
-            Page page = pageTable[frameId];
-            if (page.isDirty() == null) {
-                pageEvict = page;
-                break;
-            }
-            node = node.next;
-        }
-        if (pageEvict == null) {
-            // implement the steal strategy
-            Integer frameId = pageId2FrameIdMap.get(head.next.pageId);
-            pageEvict = pageTable[frameId];
+        Page pageEvict = pageTable[frameId];
+        if (pageEvict.isDirty() != null) {
             try {
                 flushPage(pageEvict.getId());
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
                 throw new DbException("flush page error");
             }
-            //throw new DbException("no page to evict");
         }
-        // lru cache update
-        lruRemove(pageEvict.getId());
-        Integer frameId = pageId2FrameIdMap.get(pageEvict.getId());
+        // free the frame
+        pageTable[frameId] = null;
         pageId2FrameIdMap.remove(pageEvict.getId());
         freeList.add(frameId);
-        return pageEvict.getId();
     }
-
-    private void lruRemove(PageId pageId) {
-        if (!lruMap.containsKey(pageId)) {
-            return;
-        }
-        LruNode lruNode = lruMap.get(pageId);
-        LruNode pre = lruNode.pre;
-        LruNode next = lruNode.next;
-        pre.next = next;
-        next.pre = pre;
-        lruMap.remove(pageId);
-    }
-
-    private void lruUpdate(PageId pageId) {
-        if (lruMap.containsKey(pageId)) {
-            lruRemove(pageId);
-        }
-        // append new node to the end
-        LruNode node = new LruNode(pageId);
-        LruNode pre = tail.pre;
-        pre.next = node;
-        node.pre = pre;
-        node.next = tail;
-        tail.pre = node;
-        lruMap.put(pageId, node);
-    }
-
-    private static class LruNode {
-        PageId pageId;
-        LruNode pre;
-        LruNode next;
-
-        public LruNode(PageId pageId) {
-            this.pageId = pageId;
-        }
-    }
-
 }
