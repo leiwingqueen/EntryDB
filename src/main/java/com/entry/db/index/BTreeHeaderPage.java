@@ -3,10 +3,7 @@ package com.entry.db.index;
 import com.entry.db.common.Type;
 import com.entry.db.common.DbException;
 import com.entry.db.common.Debug;
-import com.entry.db.storage.BufferPool;
-import com.entry.db.storage.Field;
-import com.entry.db.storage.IntField;
-import com.entry.db.storage.Page;
+import com.entry.db.storage.*;
 import com.entry.db.transaction.TransactionId;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,7 +18,7 @@ import java.util.Arrays;
  * @see BufferPool
  */
 @Slf4j
-public class BTreeHeaderPage implements Page {
+public class BTreeHeaderPage extends AbstractPage {
     private volatile boolean dirty = false;
     private volatile TransactionId dirtier = null;
 
@@ -46,6 +43,7 @@ public class BTreeHeaderPage implements Page {
      * @see BufferPool#getPageSize()
      */
     public BTreeHeaderPage(BTreePageId id, byte[] data) throws IOException {
+        super();
         this.pid = id;
         this.numSlots = getNumSlots();
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
@@ -87,7 +85,7 @@ public class BTreeHeaderPage implements Page {
      */
     private static int getHeaderSize() {
         // pointerBytes: nextPage and prevPage pointers
-        int pointerBytes = 2 * INDEX_SIZE;
+        int pointerBytes = 3 * INDEX_SIZE;
         return BufferPool.getPageSize() - pointerBytes;
     }
 
@@ -145,9 +143,8 @@ public class BTreeHeaderPage implements Page {
         int len = BufferPool.getPageSize();
         ByteArrayOutputStream baos = new ByteArrayOutputStream(len);
         DataOutputStream dos = new DataOutputStream(baos);
-
-        // write out the next and prev pointers
         try {
+            // write out the next and prev pointers
             dos.writeInt(nextPage);
 
         } catch (IOException e) {

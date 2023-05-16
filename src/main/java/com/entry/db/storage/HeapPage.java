@@ -16,7 +16,7 @@ import java.util.NoSuchElementException;
  * @see HeapFile
  * @see BufferPool
  */
-public class HeapPage implements Page {
+public class HeapPage extends AbstractPage {
 
     final HeapPageId pid;
     final TupleDesc td;
@@ -51,6 +51,7 @@ public class HeapPage implements Page {
      * @see BufferPool#getPageSize()
      */
     public HeapPage(HeapPageId id, byte[] data) throws IOException {
+        super();
         this.pid = id;
         this.td = Database.getCatalog().getTupleDesc(id.getTableId());
         this.numSlots = getNumTuples();

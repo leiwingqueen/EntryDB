@@ -1,6 +1,7 @@
 package com.entry.db.index;
 
 import com.entry.db.common.DbException;
+import com.entry.db.storage.AbstractPage;
 import com.entry.db.storage.BufferPool;
 import com.entry.db.storage.Page;
 import com.entry.db.transaction.TransactionId;
@@ -13,7 +14,7 @@ import java.io.*;
  *
  * @see BufferPool
  */
-public class BTreeRootPtrPage implements Page {
+public class BTreeRootPtrPage extends AbstractPage {
     // size of this page
     public final static int PAGE_SIZE = 9;
 
@@ -38,6 +39,7 @@ public class BTreeRootPtrPage implements Page {
      * of the first header page
      */
     public BTreeRootPtrPage(BTreePageId id, byte[] data) throws IOException {
+        super();
         this.pid = id;
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
 

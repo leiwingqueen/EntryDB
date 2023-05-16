@@ -2,12 +2,14 @@ package com.entry.db.index;
 
 import com.entry.db.common.Catalog;
 import com.entry.db.common.Database;
-import com.entry.db.common.Type;
 import com.entry.db.common.DbException;
+import com.entry.db.common.Type;
+import com.entry.db.storage.AbstractPage;
 import com.entry.db.storage.BufferPool;
-import com.entry.db.storage.Page;
 import com.entry.db.storage.TupleDesc;
 import com.entry.db.transaction.TransactionId;
+
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Each instance of BTreeInternalPage stores data for one page of a BTreeFile and
@@ -16,7 +18,7 @@ import com.entry.db.transaction.TransactionId;
  * @see BTreeFile
  * @see BufferPool
  */
-public abstract class BTreePage implements Page {
+public abstract class BTreePage extends AbstractPage {
     protected volatile boolean dirty = false;
     protected volatile TransactionId dirtier = null;
 
@@ -54,9 +56,12 @@ public abstract class BTreePage implements Page {
      * @see BufferPool#getPageSize()
      */
     public BTreePage(BTreePageId id, int key) {
+        super();
         this.pid = id;
         this.keyField = key;
         this.td = Database.getCatalog().getTupleDesc(id.getTableId());
+        this._pinCount = 0;
+        this._latch = new ReentrantReadWriteLock();
     }
 
     /**

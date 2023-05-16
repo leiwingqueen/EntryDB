@@ -13,7 +13,6 @@ import com.entry.db.transaction.TransactionId;
  * Page(PageId id, byte[] data)
  */
 public interface Page {
-
     /**
      * Return the id of this page.  The id is a unique identifier for a page
      * that can be used to look up the page on disk or determine if the page
@@ -46,7 +45,7 @@ public interface Page {
      * @return A byte array correspond to the bytes of this page.
      */
 
-    byte[] getPageData();
+    public abstract byte[] getPageData();
 
     /**
      * Provide a representation of this page before any modifications were made
@@ -59,4 +58,11 @@ public interface Page {
      * copy current content to the before image.
      */
     void setBeforeImage();
+
+    // pin count implementation. prevent page from being evicted
+    void pin();
+
+    void unpin();
+
+    boolean isPinned();
 }
