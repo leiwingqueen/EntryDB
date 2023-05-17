@@ -201,9 +201,10 @@ public class BufferPool {
                     try {
                         flushPage(pageId);
                         // use current page to replace the before image
-                        Page page = getPage(tid, pageId, Permissions.READ_ONLY);
-                        page.setBeforeImage();
-                    } catch (IOException | DbException | TransactionAbortedException e) {
+                        // Page page = getPage(tid, pageId, Permissions.READ_ONLY);
+                        // page.setBeforeImage();
+                        // unpin(pageId, tid, false);
+                    } catch (IOException e) {
                         log.error(e.getMessage(), e);
                         // TODO: should we need to throw an exception?
                     }
@@ -216,6 +217,7 @@ public class BufferPool {
                             pageTable[frameId] = page.getBeforeImage();
                         }
                     } else {
+                        // TODO: how to rollback a page which is not in the buffer pool? steal policy
                         // no dirty page can swap out from memory. in this case, we should do nothing
                     }
                 }
@@ -357,8 +359,10 @@ public class BufferPool {
                 LogFile logFile = Database.getLogFile();
                 logFile.logWrite(page.isDirty(), page.getBeforeImage(), page);
                 logFile.force();
+                // TODO: should we need to remove the writePage function cause we want to implement the NO FORCE policy
                 page.markDirty(false, null);
                 dbFile.writePage(page);
+                page.setBeforeImage();
             }
         } finally {
             latch.writeLock().unlock();
@@ -375,6 +379,40 @@ public class BufferPool {
         while (iterator.hasNext()) {
             PageId pageId = iterator.next();
             flushPage(pageId);
+        }
+    }
+
+    /**
+     * unpin the page from the buffer pool.
+     * <p>
+     * add by leiwingqueen 2023/5/17
+     *
+     * @param pageId
+     * @param tid
+     * @param dirty  if dirty,the page should be marked as dirty
+     * @return
+     */
+    public boolean unpin(PageId pageId, TransactionId tid, boolean dirty) {
+        latch.writeLock().lock();
+        try {
+            if (!pageId2FrameIdMap.containsKey(pageId)) {
+                return false;
+            }
+            Integer frameId = pageId2FrameIdMap.get(pageId);
+            Page page = pageTable[frameId];
+            if (!page.isPinned()) {
+                return false;
+            }
+            page.unpin();
+            if (dirty) {
+                page.markDirty(true, tid);
+            }
+            if (!page.isPinned()) {
+                lruReplacer.add(frameId);
+            }
+            return true;
+        } finally {
+            latch.writeLock().unlock();
         }
     }
 
