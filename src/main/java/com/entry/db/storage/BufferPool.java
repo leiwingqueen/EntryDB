@@ -113,12 +113,13 @@ public class BufferPool {
         lockManager.acquire(lockMode, tid, pid);
         Page page;
         latch.writeLock().lock();
+        tid.addPage(pid);
         try {
             if (pageId2FrameIdMap.containsKey(pid)) {
                 Integer frameId = pageId2FrameIdMap.get(pid);
                 page = pageTable[frameId];
                 // pin the page
-                page.pin();
+                page.pin(tid);
                 lruReplacer.remove(frameId);
                 // update lru map
                 // lruUpdate(pid);
@@ -134,7 +135,7 @@ public class BufferPool {
                 pageTable[frameId] = page;
                 pageId2FrameIdMap.put(pid, frameId);
                 // pin the page
-                page.pin();
+                page.pin(tid);
                 lruReplacer.remove(frameId);
             }
         } finally {
@@ -390,7 +391,7 @@ public class BufferPool {
      * @param pageId
      * @param tid
      * @param dirty  if dirty,the page should be marked as dirty
-     * @return
+     * @return[
      */
     public boolean unpin(PageId pageId, TransactionId tid, boolean dirty) {
         latch.writeLock().lock();
@@ -403,7 +404,7 @@ public class BufferPool {
             if (!page.isPinned()) {
                 return false;
             }
-            page.unpin();
+            page.unpin(tid);
             if (dirty) {
                 page.markDirty(true, tid);
             }

@@ -276,7 +276,15 @@ public class BTreeFile implements DbFile {
     BTreeLeafPage findLeafPage(TransactionId tid, BTreePageId pid,
                                Field f, boolean leftMost)
             throws DbException, TransactionAbortedException {
-        return findLeafPage(tid, pid, Permissions.READ_ONLY, f, new Stack<>(), leftMost);
+        tid.clearPages();
+        BTreeLeafPage leafPage = findLeafPage(tid, pid, Permissions.READ_ONLY, f, new Stack<>(), leftMost);
+        Iterator<PageId> pageIterator = tid.getPageIterator();
+        while (pageIterator.hasNext()) {
+            PageId pageId = pageIterator.next();
+            Page page = Database.getBufferPool().getPage(tid, pageId, Permissions.READ_ONLY);
+            page.unpin(tid);
+        }
+        return leafPage;
     }
 
     /**
@@ -593,7 +601,15 @@ public class BTreeFile implements DbFile {
         leafPage.markDirty(true, tid);
         leafPage.insertTuple(t);
 
+        // unpin the page
+        Iterator<PageId> pageIterator = tid.getPageIterator();
+        while (pageIterator.hasNext()) {
+            PageId pageId = pageIterator.next();
+            Page page = Database.getBufferPool().getPage(tid, pageId, Permissions.READ_WRITE);
+            page.unpin(tid);
+        }
         // return new ArrayList<>(dirtypages.values());
+
         return Collections.emptyList();
     }
 
@@ -655,7 +671,7 @@ public class BTreeFile implements DbFile {
      * @throws IOException
      * @throws TransactionAbortedException
      * @see #mergeLeafPages(TransactionId, BTreeLeafPage, BTreeLeafPage, BTreeInternalPage, BTreeEntry)
-     * @see #stealFromLeafPage(BTreeLeafPage, BTreeLeafPage, BTreeInternalPage, BTreeEntry, boolean)
+     * @see #stealFromLeafPage(TransactionId, BTreeLeafPage, BTreeLeafPage, BTreeInternalPage, BTreeEntry, boolean)
      */
     private void handleMinOccupancyLeafPage(TransactionId tid, BTreeLeafPage page,
                                             BTreeInternalPage parent, BTreeEntry leftEntry, BTreeEntry rightEntry)
@@ -1346,6 +1362,7 @@ class BTreeFileIterator extends AbstractDbFileIterator {
             if (nextp == null) {
                 curp = null;
             } else {
+                curp.unpin(tid);
                 curp = (BTreeLeafPage) Database.getBufferPool().getPage(tid,
                         nextp, Permissions.READ_ONLY);
                 it = curp.iterator();
@@ -1530,6 +1547,7 @@ class BTreeSearchIterator extends AbstractDbFileIterator {
             if (nextp == null) {
                 return null;
             } else {
+                curp.unpin(tid);
                 curp = (BTreeLeafPage) Database.getBufferPool().getPage(tid,
                         nextp, Permissions.READ_ONLY);
                 it = curp.iterator();

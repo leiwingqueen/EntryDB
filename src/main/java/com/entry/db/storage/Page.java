@@ -45,7 +45,7 @@ public interface Page {
      * @return A byte array correspond to the bytes of this page.
      */
 
-    public abstract byte[] getPageData();
+    byte[] getPageData();
 
     /**
      * Provide a representation of this page before any modifications were made
@@ -60,9 +60,9 @@ public interface Page {
     void setBeforeImage();
 
     // pin count implementation. prevent page from being evicted
-    void pin();
+    void pin(TransactionId tid);
 
-    void unpin();
+    void unpin(TransactionId tid);
 
     boolean isPinned();
 }

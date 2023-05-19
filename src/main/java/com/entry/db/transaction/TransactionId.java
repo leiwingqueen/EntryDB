@@ -1,6 +1,11 @@
 package com.entry.db.transaction;
 
+import com.entry.db.storage.PageId;
+
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -13,13 +18,35 @@ public class TransactionId implements Serializable {
     static final AtomicLong counter = new AtomicLong(0);
     final long myid;
 
+    // easy to find the related pages. used to unpin pages where the function is finished.
+    // add by leiwingqueen
+    private Set<PageId> pageSet;
+
     public TransactionId() {
         myid = counter.getAndIncrement();
+        pageSet = new HashSet<>();
     }
 
     public long getId() {
         return myid;
     }
+
+    public void addPage(PageId pid) {
+        pageSet.add(pid);
+    }
+
+    public void removePage(PageId pid) {
+        pageSet.remove(pid);
+    }
+
+    public Iterator<PageId> getPageIterator() {
+        return pageSet.iterator();
+    }
+
+    public void clearPages() {
+        pageSet.clear();
+    }
+
 
     @Override
     public boolean equals(Object obj) {
